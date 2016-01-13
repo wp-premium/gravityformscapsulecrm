@@ -1,0 +1,19 @@
+#gaddon-setting-row-person_standard_fields > td { 
+	padding-bottom: 0;
+}
+
+#gaddon-setting-row-person_custom_fields > td,
+#gaddon-setting-row-person_custom_fields .repeater th { 
+	padding-top: 0;
+}
+
+#gaddon-setting-row-person_custom_fields .repeater th {
+	width: 210px;
+}
+
+#gaddon-setting-row-person_standard_fields td select,
+#gaddon-setting-row-person_custom_fields .repeater td select {
+	margin-right: 6px;
+	max-width: none;
+	width: 200px;
+}
