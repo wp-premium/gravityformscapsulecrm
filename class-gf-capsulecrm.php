@@ -5,7 +5,7 @@ GFForms::include_feed_addon_framework();
 class GFCapsuleCRM extends GFFeedAddOn {
 	
 	protected $_version = GF_CAPSULECRM_VERSION;
-	protected $_min_gravityforms_version = '1.9.12';
+	protected $_min_gravityforms_version = '1.9.14.26';
 	protected $_slug = 'gravityformscapsulecrm';
 	protected $_path = 'gravityformscapsulecrm/capsulecrm.php';
 	protected $_full_path = __FILE__;
@@ -38,6 +38,24 @@ class GFCapsuleCRM extends GFFeedAddOn {
 		}
 
 		return self::$_instance;
+		
+	}
+
+	/**
+	 * Register needed plugin hooks and PayPal delayed payment support.
+	 * 
+	 * @access public
+	 * @return void
+	 */
+	public function init() {
+		
+		parent::init();
+		
+		$this->add_delayed_payment_support(
+			array(
+				'option_label' => esc_html__( 'Create Capsule CRM object only when payment is received.', 'gravityformscapsulecrm' )
+			)
+		);
 		
 	}
 
@@ -502,6 +520,10 @@ class GFCapsuleCRM extends GFFeedAddOn {
 			$_milestones = $this->api->get_opportunity_milestones();
 
 			if ( ! empty( $_milestones ) ) {
+
+				if ( isset( $_milestones['name'] ) ) {
+					$_milestones = array( $_milestones );
+				}
 				
 				foreach ( $_milestones as $milestone ) {
 					
@@ -640,21 +662,21 @@ class GFCapsuleCRM extends GFFeedAddOn {
 				'name'          => 'first_name',
 				'label'         => esc_html__( 'First Name', 'gravityformscapsulecrm' ),
 				'required'      => true,
-				'field_type'    => array( 'name' ),
+				'field_type'    => array( 'name', 'text', 'hidden' ),
 				'default_value' => $this->get_first_field_by_type( 'name', 3 ),
 			),
 			array(	
 				'name'          => 'last_name',
 				'label'         => esc_html__( 'Last Name', 'gravityformscapsulecrm' ),
 				'required'      => true,
-				'field_type'    => array( 'name' ),
+				'field_type'    => array( 'name', 'text', 'hidden' ),
 				'default_value' => $this->get_first_field_by_type( 'name', 6 ),
 			),
 			array(	
 				'name'          => 'email_address',
 				'label'         => esc_html__( 'Email Address', 'gravityformscapsulecrm' ),
 				'required'      => true,
-				'field_type'    => array( 'email' ),
+				'field_type'    => array( 'email', 'hidden' ),
 				'default_value' => $this->get_first_field_by_type( 'email' ),
 			),
 		);
@@ -841,6 +863,18 @@ class GFCapsuleCRM extends GFFeedAddOn {
 	public function can_create_feed() {
 		
 		return $this->initialize_api();
+		
+	}
+
+	/**
+	 * Enable feed duplication.
+	 * 
+	 * @access public
+	 * @return bool
+	 */
+	public function can_duplicate_feed() {
+		
+		return true;
 		
 	}
 
@@ -1056,7 +1090,7 @@ class GFCapsuleCRM extends GFFeedAddOn {
 		}
 
 		/* If the email address is empty, exit. */
-		if ( rgblank( $person['contacts']['email'][0]['emailAddress'] ) ) {
+		if ( GFCommon::is_invalid_or_empty_email( $person['contacts']['email'][0]['emailAddress'] ) ) {
 			
 			$this->add_feed_error( esc_html__( 'Person could not be created as email address was not provided.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
 			
