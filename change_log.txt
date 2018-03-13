@@ -1,4 +1,16 @@
 -----------------------------------------------------------
+1.2
+    - Updated API library to work with version 2.0 of Capsule CRM API.
+
+	- Added "gform_capsulecrm_case" filter to modify the case object before it is created.
+	- Added "gform_capsulecrm_opportunity" filter to modify the opportunity object before it is created.
+	- Added "gform_capsulecrm_person" filter to modify the person object before it is created/updated.
+	- Added "gform_capsulecrm_task" filter to modify the tasks object before it is created.
+	- Fixed a fatal PHP error which would occur if a WP_Error is returned when making a request to the Capsule CRM API.
+    - Fixed PHP notice.
+	- Fixed strings for translations
+
+-----------------------------------------------------------
 1.1
 	- Added feed duplication support.
 	- Added support for delaying feed processing until payment by PayPal Standard is successfully completed.
