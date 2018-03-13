@@ -1,72 +1,196 @@
 <?php
-	
+/**
+ * Contains the primary functionality of the Capsule CRM add-on.
+ *
+ * @package gravityformscapsulecrm
+ */
+
 GFForms::include_feed_addon_framework();
 
+/**
+ * The main class for the Capsule CRM add-on.
+ *
+ * @package GFCapsuleCRM
+ *
+ * @uses GFFeedAddOn
+ */
 class GFCapsuleCRM extends GFFeedAddOn {
-	
+
+	/**
+	 * Defines the add-on version.
+	 *
+	 * @var string
+	 */
 	protected $_version = GF_CAPSULECRM_VERSION;
+
+	/**
+	 * Defines minimum gravity forms version required.
+	 *
+	 * @var string
+	 */
 	protected $_min_gravityforms_version = '1.9.14.26';
+
+	/**
+	 * The add-on slug.
+	 *
+	 * @var string
+	 */
 	protected $_slug = 'gravityformscapsulecrm';
+
+	/**
+	 * The path to the main plugin file.
+	 *
+	 * Relative to the WordPress plugins folder.
+	 *
+	 * @var string
+	 */
 	protected $_path = 'gravityformscapsulecrm/capsulecrm.php';
+
+	/**
+	 * The full path to this file.
+	 *
+	 * @var string
+	 */
 	protected $_full_path = __FILE__;
+
+	/**
+	 * The add-on URL.
+	 *
+	 * @var string
+	 */
 	protected $_url = 'http://www.gravityforms.com';
+
+	/**
+	 * The title of the add-on.
+	 *
+	 * @var string
+	 */
 	protected $_title = 'Gravity Forms Capsule CRM Add-On';
+
+	/**
+	 * The add-on short title.
+	 *
+	 * @var string
+	 */
 	protected $_short_title = 'Capsule CRM';
+
+	/**
+	 * If this add-on should allow auto-updates.
+	 *
+	 * @var string
+	 */
 	protected $_enable_rg_autoupgrade = true;
+
+	/**
+	 * Stores the API class.
+	 *
+	 * @var GF_CapsuleCRM_API
+	 */
 	protected $api = null;
+
+	/**
+	 * Stores the instance of this class.
+	 *
+	 * @var GFCapsuleCRM|null
+	 */
 	private static $_instance = null;
 
 	/* Members plugin integration */
+
+	/**
+	 * Capabilites required for this add-on.
+	 *
+	 * @var array
+	 */
 	protected $_capabilities = array( 'gravityforms_capsulecrm', 'gravityforms_capsulecrm_uninstall' );
 
-	/* Permissions */
+	/**
+	 * Permissions required to access theadd-on on the Gravity Forms settings page.
+	 *
+	 * @var string
+	 */
 	protected $_capabilities_settings_page = 'gravityforms_capsulecrm';
+
+	/**
+	 * Permissions required to access the add-on on the form settings page.
+	 *
+	 * @var string
+	 */
 	protected $_capabilities_form_settings = 'gravityforms_capsulecrm';
+
+	/**
+	 * Permissions required to uninstall this add-on.
+	 *
+	 * @var string
+	 */
 	protected $_capabilities_uninstall = 'gravityforms_capsulecrm_uninstall';
-	
+
 	/**
 	 * Get instance of this class.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @static
-	 * @return $_instance
+	 *
+	 * @return GFCapsuleCRM
 	 */
 	public static function get_instance() {
-		
+
 		if ( self::$_instance == null ) {
 			self::$_instance = new self;
 		}
 
 		return self::$_instance;
-		
+
 	}
 
 	/**
 	 * Register needed plugin hooks and PayPal delayed payment support.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @return void
+	 *
+	 * @uses GFCommon::add_dismissible_message()
+	 * @uses GFFeedAddOn::add_delayed_payment_support()
 	 */
 	public function init() {
-		
+
 		parent::init();
-		
+
+		if ( get_option( 'gform_capsulecrm_oauth_upgrade_needed' ) ) {
+
+			// Prepare message.
+			$message = sprintf(
+				esc_html__( "Recent upgrades to Capsule CRM's API require re-authenticating your account. %sClick here to update your authentication settings.%s %sNo Capsule CRM feeds will be processed until reauthenticated.%s", 'gravityformscapsulecrm' ),
+				'<a href="' . admin_url( 'admin.php?page=gf_settings&subview=gravityformscapsulecrm' ) . '">',
+				'</a>',
+				'<strong>',
+				'</strong>'
+			);
+
+			GFCommon::add_dismissible_message( $message, 'capsulecrm_oauth_upgrade', 'error', false, true );
+
+		}
+
 		$this->add_delayed_payment_support(
 			array(
-				'option_label' => esc_html__( 'Create Capsule CRM object only when payment is received.', 'gravityformscapsulecrm' )
+				'option_label' => esc_html__( 'Create Capsule CRM object only when payment is received.', 'gravityformscapsulecrm' ),
 			)
 		);
-		
+
 	}
 
 	/**
 	 * Register needed styles.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
+	 *
+	 * @uses GFAddOn::get_base_url()
+	 *
 	 * @return array $styles
 	 */
 	public function styles() {
-		
+
 		$styles = array(
 			array(
 				'handle'  => 'gform_capsulecrm_form_settings_css',
@@ -74,1594 +198,1981 @@ class GFCapsuleCRM extends GFFeedAddOn {
 				'version' => $this->_version,
 				'enqueue' => array(
 					array( 'admin_page' => array( 'form_settings' ) ),
-				)
-			)
+				),
+			),
 		);
-		
+
 		return array_merge( parent::styles(), $styles );
-		
+
 	}
+
+
+
+
+
+	// # PLUGIN SETTINGS -----------------------------------------------------------------------------------------------
 
 	/**
 	 * Setup plugin settings fields.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
+	 *
+	 * @uses GFCapsuleCRM::initialize_api()
+	 *
 	 * @return array
 	 */
 	public function plugin_settings_fields() {
-						
+
+		// Prepare description.
+		$description = sprintf(
+			'<p>%s</p>',
+			sprintf(
+				esc_html__( 'Capsule CRM is a contact management tool that makes it easy to track cases, opportunities, people and tasks. Use Gravity Forms to collect customer information and automatically add it to your Capsule CRM account. If you don\'t have a Capsule CRM account, you can %1$s sign up for one here.%2$s', 'gravityformscapsulecrm' ),
+				'<a href="http://www.capsulecrm.com/" target="_blank">',
+				'</a>'
+			)
+		);
+
+		// Add authentication instructions to description.
+		if ( ! $this->initialize_api() ) {
+
+			$description .= sprintf(
+				'<p>%s</p>',
+				esc_html__( 'Gravity Forms Capsule CRM Add-On requires personal access token, which can be found on the API Authentication Token page in the My Preferences page.', 'gravityformscapsulecrm' )
+
+			);
+
+		}
+
 		return array(
 			array(
 				'title'       => '',
-				'description' => $this->plugin_settings_description(),
+				'description' => $description,
 				'fields'      => array(
 					array(
-						'name'              => 'account_url',
-						'label'             => esc_html__( 'Account URL', 'gravityformscapsulecrm' ),
+						'name'              => 'authToken',
+						'label'             => esc_html__( 'Personal Access Token', 'gravityformscapsulecrm' ),
 						'type'              => 'text',
-						'class'             => 'small',
-						'after_input'       => '.capsulecrm.com',
-						'feedback_callback' => array( $this, 'initialize_api' )
+						'class'             => 'large',
+						'feedback_callback' => array( $this, 'initialize_api' ),
 					),
 					array(
-						'name'              => 'api_token',
-						'label'             => esc_html__( 'API Token', 'gravityformscapsulecrm' ),
-						'type'              => 'text',
-						'class'             => 'medium',
-						'feedback_callback' => array( $this, 'initialize_api' )
-					),
-					array(
-						'type'              => 'save',
-						'messages'          => array(
-							'success' => esc_html__( 'Capsule CRM settings have been updated.', 'gravityformscapsulecrm' )
+						'type'     => 'save',
+						'messages' => array(
+							'success' => esc_html__( 'Capsule CRM settings have been updated.', 'gravityformscapsulecrm' ),
 						),
 					),
 				),
 			),
 		);
-		
+
 	}
 
 	/**
-	 * Prepare plugin settings description.
-	 * 
+	 * Updates plugin settings with the provided settings.
+	 * (Forked to trigger milestone migration.)
+	 *
+	 * @since  1.2
 	 * @access public
-	 * @return string
+	 *
+	 * @param array $settings Plugin settings to be saved.
+	 *
+	 * @uses GFCapsuleCRM::upgrade_milestones()
 	 */
-	public function plugin_settings_description() {
-		
-		$description  = '<p>';
-		$description .= sprintf(
-			esc_html__( 'Capsule CRM is a contact management tool makes it easy to track cases, opportunities, people and tasks. Use Gravity Forms to collect customer information and automatically add them to your Capsule CRM account. If you don\'t have a Capsule CRM account, you can %1$s sign up for one here.%2$s', 'gravityformscapsulecrm' ),
-			'<a href="http://www.capsulecrm.com/" target="_blank">', '</a>'
-		);
-		$description .= '</p>';
-		
-		if ( ! $this->initialize_api() ) {
-			
-			$description .= '<p>';
-			$description .= esc_html__( 'Gravity Forms Capsule CRM Add-On requires your account URL and API Token, which can be found on the API Authentication Token page in the My Preferences page.', 'gravityformscapsulecrm' );
-			$description .= '</p>';
-			
+	public function update_plugin_settings( $settings ) {
+
+		// Update plugin settings.
+		parent::update_plugin_settings( $settings );
+
+		// If upgrade flag is not set, exit.
+		if ( ! get_option( 'gform_capsulecrm_oauth_upgrade_needed' ) ) {
+			return;
 		}
-				
-		return $description;
-		
+
+		// If API is initialized, upgrade.
+		if ( $this->initialize_api() ) {
+			$this->upgrade_milestones();
+		}
+
 	}
-	
+
+
+
+
+
+	// # FEED SETTINGS -------------------------------------------------------------------------------------------------
+
 	/**
 	 * Setup fields for feed settings.
-	 * 
+	 *
+	 * @since 1.0
 	 * @access public
+	 *
+	 * @uses GFCapsuleCRM::custom_fields_for_feed_mapping()
+	 * @uses GFCapsuleCRM::get_categories_as_choices()
+	 * @uses GFCapsuleCRM::get_milestones_as_choices()
+	 * @uses GFCapsuleCRM::get_task_assignments_as_choices()
+	 * @uses GFCapsuleCRM::get_users_as_choices()
+	 * @uses GFCapsuleCRM::standard_fields_for_feed_mapping()
+	 * @uses GFFeedAddOn::get_default_feed_name()
+	 *
 	 * @return array
 	 */
 	public function feed_settings_fields() {
-		
-		/* Build base fields array. */
-		$base_fields = array(
-			'title'  => '',
-			'fields' => array(
-				array(
-					'name'           => 'feed_name',
-					'label'          => esc_html__( 'Feed Name', 'gravityformscapsulecrm' ),
-					'type'           => 'text',
-					'required'       => true,
-					'default_value'  => $this->get_default_feed_name(),
-					'tooltip'        => '<h6>'. esc_html__( 'Name', 'gravityformscapsulecrm' ) .'</h6>' . esc_html__( 'Enter a feed name to uniquely identify this setup.', 'gravityformscapsulecrm' )
-				),
-				array(
-					'name'           => 'action',
-					'label'          => esc_html__( 'Action', 'gravityformscapsulecrm' ),
-					'type'           => 'checkbox',
-					'required'       => true,
-					'onclick'        => "jQuery(this).parents('form').submit();",
-					'choices'        => array(
-						array(
-							'name'          => 'create_person',
-							'label'         => esc_html__( 'Create New Person', 'gravityformscapsulecrm' ),
+
+		return array(
+			array(
+				'title'  => '',
+				'fields' => array(
+					array(
+						'name'          => 'feed_name',
+						'label'         => esc_html__( 'Feed Name', 'gravityformscapsulecrm' ),
+						'type'          => 'text',
+						'required'      => true,
+						'class'         => 'small',
+						'default_value' => $this->get_default_feed_name(),
+						'tooltip'       => sprintf(
+							'<h6>%s</h6>%s',
+							esc_html__( 'Name', 'gravityformscapsulecrm' ),
+							esc_html__( 'Enter a feed name to uniquely identify this setup.', 'gravityformscapsulecrm' )
 						),
-						array(
-							'name'          => 'create_task',
-							'label'         => esc_html__( 'Create New Task', 'gravityformscapsulecrm' ),
-						),
-					)
-				)
-			)
-		);
-		
-		/* Build person fields array. */
-		$person_fields = array(
-			'title'  => esc_html__( 'Person Details', 'gravityformscapsulecrm' ),
-			'dependency' => array( 'field' => 'create_person', 'values' => ( '1' ) ),
-			'fields' => array(
-				array(
-					'name'           => 'person_standard_fields',
-					'label'          => esc_html__( 'Map Fields', 'gravityformscapsulecrm' ),
-					'type'           => 'field_map',
-					'field_map'      => $this->standard_fields_for_feed_mapping(),
-					'tooltip'        => '<h6>'. esc_html__( 'Map Fields', 'gravityformscapsulecrm' ) .'</h6>' . esc_html__( 'Select which Gravity Form fields pair with their respective Capsule CRM fields.', 'gravityformscapsulecrm' )
-				),
-				array(
-					'name'           => 'person_custom_fields',
-					'label'          => '',
-					'type'           => 'dynamic_field_map',
-					'field_map'      => $this->custom_fields_for_feed_mapping(),
-					'disable_custom' => true,
-				),
-				array(
-					'name'           => 'person_about',
-					'label'          => esc_html__( 'About', 'gravityformscapsulecrm' ),
-					'type'           => 'textarea',
-					'class'          => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
-				),		
-				array(
-					'name'           => 'update_person',
-					'label'          => esc_html__( 'Update Person', 'gravityformscapsulecrm' ),
-					'type'           => 'checkbox_and_select',
-					'tooltip'        => '<h6>'. esc_html__( 'Update Person', 'gravityformscapsulecrm' ) .'</h6>' . esc_html__( 'If enabled and an existing person is found, their contact details will either be replaced or appended. Job title and organization will be replaced whether replace or append is chosen.', 'gravityformscapsulecrm' ),
-					'checkbox'       => array(
-						'name'          => 'update_person_enable',
-						'label'         => esc_html__( 'Update Person if already exists', 'gravityformscapsulecrm' ),
 					),
-					'select'         => array(
-						'name'          => 'update_person_action',
-						'choices'       => array(
+					array(
+						'name'     => 'action',
+						'label'    => esc_html__( 'Action', 'gravityformscapsulecrm' ),
+						'type'     => 'checkbox',
+						'required' => true,
+						'onclick'  => "jQuery(this).parents('form').submit();",
+						'choices'  => array(
 							array(
-								'label'         => esc_html__( 'and replace existing data', 'gravityformscapsulecrm' ),
-								'value'         => 'replace'
+								'name'  => 'create_person',
+								'label' => esc_html__( 'Create New Person', 'gravityformscapsulecrm' ),
 							),
 							array(
-								'label'         => esc_html__( 'and append new data', 'gravityformscapsulecrm' ),
-								'value'         => 'append'
-							)
-						)	
-					),
-				),
-				array(
-					'name'           => 'assign_to',
-					'label'          => esc_html__( 'Assign To', 'gravityformscapsulecrm' ),
-					'type'           => 'checkbox',
-					'onclick'        => "jQuery(this).parents('form').submit();",
-					'choices'        => array(
-						array(
-							'name'          => 'create_case',
-							'label'         => esc_html__( 'Assign Person to a New Case', 'gravityformscapsulecrm' ),
+								'name'  => 'create_task',
+								'label' => esc_html__( 'Create New Task', 'gravityformscapsulecrm' ),
+							),
 						),
-						array(
-							'name'          => 'create_opportunity',
-							'label'         => esc_html__( 'Assign Person to a New Opportunity', 'gravityformscapsulecrm' ),
+					),
+				),
+			),
+			array(
+				'title'      => esc_html__( 'Person Details', 'gravityformscapsulecrm' ),
+				'dependency' => array( 'field' => 'create_person', 'values' => array( '1' ) ),
+				'fields'     => array(
+					array(
+						'name'      => 'person_standard_fields',
+						'label'     => esc_html__( 'Map Fields', 'gravityformscapsulecrm' ),
+						'type'      => 'field_map',
+						'field_map' => $this->standard_fields_for_feed_mapping(),
+						'tooltip'   => sprintf(
+							'<h6>%s</h6>%s',
+							esc_html__( 'Map Fields', 'gravityformscapsulecrm' ),
+							esc_html__( 'Select which Gravity Form fields pair with their respective Capsule CRM fields.', 'gravityformscapsulecrm' )
 						),
-					)
-				)
-			)
-		);
-
-		/* Build case fields array. */
-		$case_fields = array(
-			'title'      => esc_html__( 'Case Details', 'gravityformscapsulecrm' ),
-			'dependency' => array( 'field' => 'create_case', 'values' => ( '1' ) ),
-			'fields'     => array(
-				array(
-					'name'           => 'case_name',
-					'type'           => 'text',
-					'required'       => true,
-					'class'          => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
-					'label'          => esc_html__( 'Name', 'gravityformscapsulecrm' ),
-				),
-				array(
-					'name'           => 'case_description',
-					'type'           => 'text',
-					'class'          => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
-					'label'          => esc_html__( 'Description', 'gravityformscapsulecrm' ),
-				),
-				array(
-					'name'           => 'case_status',
-					'type'           => 'select',
-					'label'          => esc_html__( 'Status', 'gravityformscapsulecrm' ),
-					'choices'        => array(
-						array(
-							'label' => esc_html__( 'Open', 'gravityformscapsulecrm' ),
-							'value' => 'OPEN',
-						),	
-						array(
-							'label' => esc_html__( 'Closed', 'gravityformscapsulecrm' ),
-							'value' => 'CLOSED',
-						)	
+					),
+					array(
+						'name'           => 'person_custom_fields',
+						'label'          => '',
+						'type'           => 'dynamic_field_map',
+						'field_map'      => $this->custom_fields_for_feed_mapping(),
+						'disable_custom' => true,
+					),
+					array(
+						'name'  => 'person_about',
+						'label' => esc_html__( 'About', 'gravityformscapsulecrm' ),
+						'type'  => 'textarea',
+						'class' => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
+					),
+					array(
+						'name'     => 'update_person',
+						'label'    => esc_html__( 'Update Person', 'gravityformscapsulecrm' ),
+						'type'     => 'checkbox_and_select',
+						'tooltip'  => sprintf(
+							'<h6>%s</h6>%s',
+							esc_html__( 'Update Person', 'gravityformscapsulecrm' ),
+							esc_html__( 'If enabled and an existing person is found, their contact details will either be replaced or appended. Job title and organization will be replaced whether replace or append is chosen.', 'gravityformscapsulecrm' )
+						),
+						'checkbox' => array(
+							'name'  => 'update_person_enable',
+							'label' => esc_html__( 'Update Person if already exists', 'gravityformscapsulecrm' ),
+						),
+						'select'   => array(
+							'name'    => 'update_person_action',
+							'choices' => array(
+								array(
+									'label' => esc_html__( 'and replace existing data', 'gravityformscapsulecrm' ),
+									'value' => 'replace',
+								),
+								array(
+									'label' => esc_html__( 'and append new data', 'gravityformscapsulecrm' ),
+									'value' => 'append',
+								),
+							),
+						),
+					),
+					array(
+						'name'    => 'assign_to',
+						'label'   => esc_html__( 'Assign To', 'gravityformscapsulecrm' ),
+						'type'    => 'checkbox',
+						'onclick' => "jQuery(this).parents('form').submit();",
+						'choices' => array(
+							array(
+								'name'  => 'create_case',
+								'label' => esc_html__( 'Assign Person to a New Case', 'gravityformscapsulecrm' ),
+							),
+							array(
+								'name'  => 'create_opportunity',
+								'label' => esc_html__( 'Assign Person to a New Opportunity', 'gravityformscapsulecrm' ),
+							),
+						),
 					),
 				),
-				array(
-					'name'           => 'case_owner',
-					'type'           => 'select',
-					'label'          => esc_html__( 'Owner', 'gravityformscapsulecrm' ),
-					'choices'        => $this->get_owners_for_feed_setting(),
-				),
-			)
-		);
-
-		/* Build opportunity fields array. */
-		$opportunity_fields = array(
-			'title'      => esc_html__( 'Opportunity Details', 'gravityformscapsulecrm' ),
-			'dependency' => array( 'field' => 'create_opportunity', 'values' => ( '1' ) ),
-			'fields'     => array(
-				array(
-					'name'           => 'opportunity_name',
-					'type'           => 'text',
-					'required'       => true,
-					'class'          => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
-					'label'          => esc_html__( 'Name', 'gravityformscapsulecrm' ),
-				),
-				array(
-					'name'           => 'opportunity_description',
-					'type'           => 'text',
-					'class'          => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
-					'label'          => esc_html__( 'Description', 'gravityformscapsulecrm' ),
-				),
-				array(
-					'name'           => 'opportunity_milestone',
-					'type'           => 'select',
-					'required'       => true,
-					'label'          => esc_html__( 'Milestone', 'gravityformscapsulecrm' ),
-					'choices'        => $this->get_opportunity_milestones_for_feed_setting(),
-				),
-				array(
-					'name'           => 'opportunity_owner',
-					'type'           => 'select',
-					'label'          => esc_html__( 'Owner', 'gravityformscapsulecrm' ),
-					'choices'        => $this->get_owners_for_feed_setting(),
-				),
-			)
-		);
-
-		/* Build task fields array. */
-		$task_fields = array(
-			'title'      => esc_html__( 'Task Details', 'gravityformscapsulecrm' ),
-			'dependency' => array( 'field' => 'create_task', 'values' => ( '1' ) ),
-			'fields'     => array(
-				array(
-					'name'                => 'task_description',
-					'type'                => 'text',
-					'required'            => true,
-					'class'               => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
-					'label'               => esc_html__( 'Description', 'gravityformscapsulecrm' ),
-				),
-				array(
-					'name'                => 'task_detail',
-					'type'                => 'text',
-					'class'               => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
-					'label'               => esc_html__( 'Detail', 'gravityformscapsulecrm' ),
-				),
-				array(
-					'name'                => 'task_days_until_due',
-					'type'                => 'text',
-					'required'            => true,
-					'class'               => 'small',
-					'label'               => esc_html__( 'Days Until Due', 'gravityformscapsulecrm' ),
-					'validation_callback' => array( $this, 'validate_task_days_until_due' )
-				),
-				array(
-					'name'                => 'task_status',
-					'type'                => 'select',
-					'label'               => esc_html__( 'Status', 'gravityformscapsulecrm' ),
-					'choices'             => array(
-						array(
-							'label' => esc_html__( 'Open', 'gravityformscapsulecrm' ),
-							'value' => 'OPEN',
-						),	
-						array(
-							'label' => esc_html__( 'Completed', 'gravityformscapsulecrm' ),
-							'value' => 'COMPLETED',
-						)	
+			),
+			array(
+				'title'      => esc_html__( 'Case Details', 'gravityformscapsulecrm' ),
+				'dependency' => array( 'field' => 'create_case', 'values' => array( '1' ) ),
+				'fields'     => array(
+					array(
+						'name'     => 'case_name',
+						'type'     => 'text',
+						'required' => true,
+						'class'    => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
+						'label'    => esc_html__( 'Name', 'gravityformscapsulecrm' ),
+					),
+					array(
+						'name'  => 'case_description',
+						'type'  => 'text',
+						'class' => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
+						'label' => esc_html__( 'Description', 'gravityformscapsulecrm' ),
+					),
+					array(
+						'name'    => 'case_status',
+						'type'    => 'select',
+						'label'   => esc_html__( 'Status', 'gravityformscapsulecrm' ),
+						'choices' => array(
+							array(
+								'label' => esc_html__( 'Open', 'gravityformscapsulecrm' ),
+								'value' => 'OPEN',
+							),
+							array(
+								'label' => esc_html__( 'Closed', 'gravityformscapsulecrm' ),
+								'value' => 'CLOSED',
+							),
+						),
+					),
+					array(
+						'name'    => 'case_owner',
+						'type'    => 'select',
+						'label'   => esc_html__( 'Owner', 'gravityformscapsulecrm' ),
+						'choices' => $this->get_users_as_choices(),
 					),
 				),
-				array(
-					'name'                => 'task_category',
-					'type'                => 'select',
-					'label'               => esc_html__( 'Category', 'gravityformscapsulecrm' ),
-					'choices'             => $this->get_task_categories_for_feed_setting(),
+			),
+			array(
+				'title'      => esc_html__( 'Opportunity Details', 'gravityformscapsulecrm' ),
+				'dependency' => array( 'field' => 'create_opportunity', 'values' => array( '1' ) ),
+				'fields'     => array(
+					array(
+						'name'     => 'opportunity_name',
+						'type'     => 'text',
+						'required' => true,
+						'class'    => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
+						'label'    => esc_html__( 'Name', 'gravityformscapsulecrm' ),
+					),
+					array(
+						'name'  => 'opportunity_description',
+						'type'  => 'text',
+						'class' => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
+						'label' => esc_html__( 'Description', 'gravityformscapsulecrm' ),
+					),
+					array(
+						'name'     => 'opportunity_milestone',
+						'type'     => 'select',
+						'required' => true,
+						'label'    => esc_html__( 'Milestone', 'gravityformscapsulecrm' ),
+						'choices'  => $this->get_milestones_as_choices(),
+					),
+					array(
+						'name'    => 'opportunity_owner',
+						'type'    => 'select',
+						'label'   => esc_html__( 'Owner', 'gravityformscapsulecrm' ),
+						'choices' => $this->get_users_as_choices(),
+					),
 				),
-				array(
-					'name'                => 'task_owner',
-					'type'                => 'select',
-					'label'               => esc_html__( 'Owner', 'gravityformscapsulecrm' ),
-					'choices'             => $this->get_owners_for_feed_setting(),
+			),
+			array(
+				'title'      => esc_html__( 'Task Details', 'gravityformscapsulecrm' ),
+				'dependency' => array( 'field' => 'create_task', 'values' => ( '1' ) ),
+				'fields'     => array(
+					array(
+						'name'     => 'task_description',
+						'type'     => 'text',
+						'required' => true,
+						'class'    => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
+						'label'    => esc_html__( 'Description', 'gravityformscapsulecrm' ),
+					),
+					array(
+						'name'  => 'task_detail',
+						'type'  => 'text',
+						'class' => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
+						'label' => esc_html__( 'Detail', 'gravityformscapsulecrm' ),
+					),
+					array(
+						'name'                => 'task_days_until_due',
+						'type'                => 'text',
+						'required'            => true,
+						'class'               => 'small',
+						'label'               => esc_html__( 'Days Until Due', 'gravityformscapsulecrm' ),
+						'validation_callback' => array( $this, 'validate_task_days_until_due' ),
+					),
+					array(
+						'name'    => 'task_status',
+						'type'    => 'select',
+						'label'   => esc_html__( 'Status', 'gravityformscapsulecrm' ),
+						'choices' => array(
+							array(
+								'label' => esc_html__( 'Open', 'gravityformscapsulecrm' ),
+								'value' => 'OPEN',
+							),
+							array(
+								'label' => esc_html__( 'Completed', 'gravityformscapsulecrm' ),
+								'value' => 'COMPLETED',
+							),
+						),
+					),
+					array(
+						'name'    => 'task_category',
+						'type'    => 'select',
+						'label'   => esc_html__( 'Category', 'gravityformscapsulecrm' ),
+						'choices' => $this->get_categories_as_choices(),
+					),
+					array(
+						'name'    => 'task_owner',
+						'type'    => 'select',
+						'label'   => esc_html__( 'Owner', 'gravityformscapsulecrm' ),
+						'choices' => $this->get_users_as_choices(),
+					),
+					array(
+						'name'    => 'assign_task',
+						'label'   => esc_html__( 'Assign Task', 'gravityformscapsulecrm' ),
+						'type'    => 'select',
+						'choices' => $this->get_task_assignments_as_choices(),
+					),
 				),
-				array(
-					'name'                => 'assign_task',
-					'label'               => esc_html__( 'Assign Task', 'gravityformscapsulecrm' ),
-					'type'                => 'select',
-					'choices'             => $this->get_task_assignment_for_feed_setting()
-				)
-			)
+			),
+			array(
+				'title'      => esc_html__( 'Feed Conditional Logic', 'gravityformscapsulecrm' ),
+				'dependency' => array( $this, 'show_conditional_logic_field' ),
+				'fields'     => array(
+					array(
+						'name'           => 'feed_condition',
+						'type'           => 'feed_condition',
+						'label'          => esc_html__( 'Conditional Logic', 'gravityformscapsulecrm' ),
+						'checkbox_label' => esc_html__( 'Enable', 'gravityformscapsulecrm' ),
+						'instructions'   => esc_html__( 'Export to Capsule CRM if', 'gravityformscapsulecrm' ),
+						'tooltip'        => sprintf(
+							'<h6>%s</h6>%s',
+							esc_html__( 'Conditional Logic', 'gravityformscapsulecrm' ),
+							esc_html__( 'When conditional logic is enabled, form submissions will only be exported to Capsule CRM when the condition is met. When disabled, all form submissions will be posted.', 'gravityformscapsulecrm' )
+						),
+					),
+				),
+			),
 		);
 
-		/* Build conditional logic fields array. */
-		$conditional_fields = array(
-			'title'      => esc_html__( 'Feed Conditional Logic', 'gravityformscapsulecrm' ),
-			'dependency' => array( $this, 'show_conditional_logic_field' ),
-			'fields'     => array(
-				array(
-					'name'           => 'feed_condition',
-					'type'           => 'feed_condition',
-					'label'          => esc_html__( 'Conditional Logic', 'gravityformscapsulecrm' ),
-					'checkbox_label' => esc_html__( 'Enable', 'gravityformscapsulecrm' ),
-					'instructions'   => esc_html__( 'Export to Capsule CRM if', 'gravityformscapsulecrm' ),
-					'tooltip'        => '<h6>' . esc_html__( 'Conditional Logic', 'gravityformscapsulecrm' ) . '</h6>' . esc_html__( 'When conditional logic is enabled, form submissions will only be exported to Capsule CRM when the condition is met. When disabled, all form submissions will be posted.', 'gravityformscapsulecrm' )
-				),
-				
-			)
-		);
-		
-		return array( $base_fields, $person_fields, $case_fields, $opportunity_fields, $task_fields, $conditional_fields );
-		
 	}
-	
+
 	/**
 	 * Set custom dependency for conditional logic.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
+	 *
+	 * @uses   GFAddOn::get_setting()
+	 *
 	 * @return bool
 	 */
 	public function show_conditional_logic_field() {
-		
-		/* Get current feed. */
-		$feed = $this->get_current_feed();
-		
-		/* Show if an action is chosen */
-		if ( rgpost( '_gaddon_setting_create_person' ) == '1' || $feed['meta']['create_person'] == '1' || rgpost( '_gaddon_setting_create_task' ) == '1' || $feed['meta']['create_task'] == '1' ) {
-			
-			return true;
-						
-		}
-		
-		return false;
-		
+
+		return $this->get_setting( 'create_person' ) || $this->get_setting( 'create_task' );
+
 	}
-	
+
 	/**
 	 * Check if "Task Days Until Due" setting is numeric.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @param array $field
-	 * @param string $field_setting
+	 *
+	 * @param array  $field         The field being validated.
+	 * @param string $field_setting The setting to validate.
+	 *
+	 * @uses   GFAddOn::set_field_error()
 	 */
 	public function validate_task_days_until_due( $field, $field_setting ) {
-		
-		if ( ! is_numeric( $field_setting ) )
+
+		if ( ! is_numeric( $field_setting ) ) {
 			$this->set_field_error( $field, esc_html__( 'This field must be numeric.', 'gravityforms' ) );
-		
+		}
+
 	}
-	
+
 	/**
 	 * Get Capsule CRM users for feed settings field.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @return array $owners
+	 *
+	 * @uses   GFCapsuleCRM::initialize_api()
+	 * @uses   GF_CapsuleCRM_API::get_milestones()
+	 *
+	 * @return array
 	 */
-	public function get_owners_for_feed_setting() {
-		
-		/* Setup initial owners array. */
-		$owners = array(
+	public function get_users_as_choices() {
+
+		// If API is not initialized, return.
+		if ( ! $this->initialize_api() ) {
+			return array();
+		}
+
+		// Initialize choices array.
+		$choices = array(
 			array(
 				'label' => esc_html__( 'Choose a Capsule CRM User', 'gravityformscapsulecrm' ),
-				'value' => ''
-			)	
+				'value' => '',
+			),
 		);
-		
-		/* If API is not initialized, return owners array. */
-		if ( ! $this->initialize_api() )
-			return $owners;
-		
+
 		try {
-			
+
+			// Get users.
 			$users = $this->api->get_users();
-				
-			foreach ( $users as $user ) {
-					
-				$owners[] = array(
-					'label' => $user['name'],
-					'value' => $user['username']	
-				);
-				
-			}
-			
+
 		} catch ( Exception $e ) {
-			
-			$this->log_error( __METHOD__ . '(): Could not get Capsule CRM users; '. $e->getMessage() );	
-			
+
+			// Log that we could not get users.
+			$this->log_error( __METHOD__ . '(): Unable to retrieve Capsule CRM users; ' . $e->getMessage() );
+
+			return $choices;
+
 		}
-		
-		/* Return owners array. */
-		return $owners;
-		
+
+		// Loop through milestones.
+		foreach ( $users as $user ) {
+
+			// Add milestone as choice.
+			$choices[] = array(
+				'label' => esc_html( $user['name'] ),
+				'value' => esc_html( $user['username'] ),
+			);
+
+		}
+
+		return $choices;
+
 	}
 
 	/**
 	 * Get Capsule CRM opportunity milestones for feed settings field.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @return array $milestones
+	 *
+	 * @uses   GFCapsuleCRM::initialize_api()
+	 * @uses   GF_CapsuleCRM_API::get_milestones()
+	 *
+	 * @return array
 	 */
-	public function get_opportunity_milestones_for_feed_setting() {
-		
-		/* Setup initial milestones array. */
-		$milestones = array(
+	public function get_milestones_as_choices() {
+
+		// If API is not initialized, return.
+		if ( ! $this->initialize_api() ) {
+			return array();
+		}
+
+		// Initialize choices array.
+		$choices = array(
 			array(
 				'label' => esc_html__( 'Choose a Milestone', 'gravityformscapsulecrm' ),
-				'value' => ''
-			)	
+				'value' => '',
+			),
 		);
-		
-		/* If API is not initialized, return milestones array. */
-		if ( ! $this->initialize_api() )
-			return $milestones;
-		
+
 		try {
-			
-			$_milestones = $this->api->get_opportunity_milestones();
 
-			if ( ! empty( $_milestones ) ) {
+			// Get milestones.
+			$milestones = $this->api->get_milestones();
 
-				if ( isset( $_milestones['name'] ) ) {
-					$_milestones = array( $_milestones );
-				}
-				
-				foreach ( $_milestones as $milestone ) {
-					
-					$milestones[] = array(
-						'label' => $milestone['name'],
-						'value' => $milestone['id']
-					);
-					
-				}
-				
-			}
-			
 		} catch ( Exception $e ) {
-			
-			$this->log_error( __METHOD__ . '(): Could not get Capsule CRM opportunity milestones; '. $e->getMessage() );	
-			
+
+			// Log that we could not get milestones.
+			$this->log_error( __METHOD__ . '(): Unable to retrieve Capsule CRM milestones; ' . $e->getMessage() );
+
+			return $choices;
+
 		}
-		
-		/* Return categories array. */
-		return $milestones;
-		
+
+		// Loop through milestones.
+		foreach ( $milestones as $milestone ) {
+
+			// Add milestone as choice.
+			$choices[] = array(
+				'label' => esc_html( $milestone['name'] ),
+				'value' => esc_html( $milestone['name'] ),
+			);
+
+		}
+
+		return $choices;
+
 	}
 
 	/**
 	 * Get Capsule CRM task categories for feed settings field.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @return array $categories
+	 *
+	 * @uses   GFCapsuleCRM::initialize_api()
+	 * @uses   GF_CapsuleCRM_API::get_categories()
+	 *
+	 * @return array
 	 */
-	public function get_task_categories_for_feed_setting() {
-		
-		/* Setup initial categories array. */
-		$categories = array(
+	public function get_categories_as_choices() {
+
+		// If API is not initialized, return.
+		if ( ! $this->initialize_api() ) {
+			return array();
+		}
+
+		// Initialize choices array.
+		$choices = array(
 			array(
 				'label' => esc_html__( 'Choose a Category', 'gravityformscapsulecrm' ),
-				'value' => ''
-			)	
+				'value' => '',
+			),
 		);
-		
-		/* If API is not initialized, return categories array. */
-		if ( ! $this->initialize_api() )
-			return $categories;
-		
-		try {
-			
-			$_categories = $this->api->get_task_categories();
 
-			if ( ! empty( $_categories ) ) {
-				
-				foreach ( $_categories as $category ) {
-					
-					$categories[] = array(
-						'label' => $category,
-						'value' => $category
-					);
-					
-				}
-				
-			}
-			
+		try {
+
+			// Get categories.
+			$categories = $this->api->get_categories();
+
 		} catch ( Exception $e ) {
-			
-			$this->log_error( __METHOD__ . '(): Could not get Capsule CRM task categories; '. $e->getMessage() );	
-			
+
+			// Log that we could not get categories.
+			$this->log_error( __METHOD__ . '(): Unable to retrieve Capsule CRM categories; ' . $e->getMessage() );
+
+			return $choices;
+
 		}
-		
-		/* Return categories array. */
-		return $categories;
-		
+
+		// Loop through categories.
+		foreach ( $categories as $category ) {
+
+			// Add category as choice.
+			$choices[] = array(
+				'label' => esc_html( $category['name'] ),
+				'value' => esc_html( $category['name'] ),
+			);
+
+		}
+
+		return $choices;
+
 	}
 
 	/**
 	 * Get task assignment options for feed settings fields.
-	 * 
+	 *
+	 * @since 1.0
 	 * @access public
-	 * @return array $assignments
+	 *
+	 * @uses GFAddOn::get_setting()
+	 *
+	 * @return array
 	 */
-	public function get_task_assignment_for_feed_setting() {
-		
-		/* Setup assignments array. */
-		$assignments = array(
+	public function get_task_assignments_as_choices() {
+
+		// Initialize choices array.
+		$choices = array(
 			array(
 				'value' => 'none',
 				'label' => esc_html__( 'Do Not Assign Task', 'gravityformscapsulecrm' ),
-			)
+			),
 		);
-		
-		/* Get current feed. */
-		$feed = $this->get_current_feed();
-		
-		/* Add case field */
-		if ( rgpost( '_gaddon_setting_create_case' ) == '1' || ( isset( $feed['meta']['create_case'] ) && $feed['meta']['create_case'] == '1' ) ) {
-			
-			$assignments[] = array(
+
+		// Add case field as choice.
+		if ( $this->get_setting( 'create_case' ) ) {
+			$choices[] = array(
 				'value' => 'case',
 				'label' => esc_html__( 'Assign Task to Created Case', 'gravityformscapsulecrm' ),
 			);
-			
 		}
 
-		/* Add contact field */
-		if ( rgpost( '_gaddon_setting_create_person' ) == '1' || $feed['meta']['create_person'] == '1' ) {
-			
-			$assignments[] = array(
+		// Add person field as choice.
+		if ( $this->get_setting( 'create_person' ) ) {
+			$choices[] = array(
 				'value' => 'person',
 				'label' => esc_html__( 'Assign Task to Created Person', 'gravityformscapsulecrm' ),
 			);
-			
 		}
 
-		/* Add opportunity field */
-		if ( rgpost( '_gaddon_setting_create_opportunity' ) == '1' || ( isset( $feed['meta']['create_opportunity'] ) && $feed['meta']['create_opportunity'] == '1' ) ) {
-			
-			$assignments[] = array(
+		// Add opportunity field as choice.
+		if ( $this->get_setting( 'create_opportunity' ) ) {
+			$choices[] = array(
 				'value' => 'opportunity',
 				'label' => esc_html__( 'Assign Task to Created Opportunity', 'gravityformscapsulecrm' ),
 			);
-			
 		}
-		
-		/* Return assignments array. */
-		return $assignments;
-		
+
+		return $choices;
+
 	}
 
 	/**
 	 * Prepare standard fields for feed field mapping.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
+	 *
 	 * @return array
 	 */
 	public function standard_fields_for_feed_mapping() {
-		
+
 		return array(
-			array(	
-				'name'          => 'first_name',
-				'label'         => esc_html__( 'First Name', 'gravityformscapsulecrm' ),
-				'required'      => true,
-				'field_type'    => array( 'name', 'text', 'hidden' ),
-				'default_value' => $this->get_first_field_by_type( 'name', 3 ),
+			array(
+				'name'       => 'first_name',
+				'label'      => esc_html__( 'First Name', 'gravityformscapsulecrm' ),
+				'required'   => true,
+				'field_type' => array( 'name', 'text', 'hidden' ),
 			),
-			array(	
-				'name'          => 'last_name',
-				'label'         => esc_html__( 'Last Name', 'gravityformscapsulecrm' ),
-				'required'      => true,
-				'field_type'    => array( 'name', 'text', 'hidden' ),
-				'default_value' => $this->get_first_field_by_type( 'name', 6 ),
+			array(
+				'name'       => 'last_name',
+				'label'      => esc_html__( 'Last Name', 'gravityformscapsulecrm' ),
+				'required'   => true,
+				'field_type' => array( 'name', 'text', 'hidden' ),
 			),
-			array(	
-				'name'          => 'email_address',
-				'label'         => esc_html__( 'Email Address', 'gravityformscapsulecrm' ),
-				'required'      => true,
-				'field_type'    => array( 'email', 'hidden' ),
-				'default_value' => $this->get_first_field_by_type( 'email' ),
+			array(
+				'name'       => 'email_address',
+				'label'      => esc_html__( 'Email Address', 'gravityformscapsulecrm' ),
+				'required'   => true,
+				'field_type' => array( 'email', 'hidden' ),
 			),
 		);
-		
+
 	}
 
 	/**
 	 * Prepare contact and custom fields for feed field mapping.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
+	 *
 	 * @return array
 	 */
 	public function custom_fields_for_feed_mapping() {
-		
+
 		return array(
 			array(
-				'label'   => esc_html__( 'Choose a Field', 'gravityformscapsulecrm' ),	
+				'label' => esc_html__( 'Choose a Field', 'gravityformscapsulecrm' ),
 			),
-			array(	
-				'value'    => 'title',
-				'label'    => esc_html__( 'Job Title', 'gravityformscapsulecrm' ),
+			array(
+				'value' => 'title',
+				'label' => esc_html__( 'Job Title', 'gravityformscapsulecrm' ),
 			),
-			array(	
-				'value'    => 'organization',
-				'label'    => esc_html__( 'Organization', 'gravityformscapsulecrm' ),
+			array(
+				'value' => 'organization',
+				'label' => esc_html__( 'Organization', 'gravityformscapsulecrm' ),
 			),
-			array(	
+			array(
 				'label'   => esc_html__( 'Email Address', 'gravityformscapsulecrm' ),
 				'choices' => array(
 					array(
 						'label' => esc_html__( 'Work', 'gravityformscapsulecrm' ),
-						'value' => 'email_work'	
+						'value' => 'email_work',
 					),
 					array(
 						'label' => esc_html__( 'Home', 'gravityformscapsulecrm' ),
-						'value' => 'email_home'	
+						'value' => 'email_home',
 					),
-				)
+				),
 			),
-			array(	
+			array(
 				'label'   => esc_html__( 'Phone Number', 'gravityformscapsulecrm' ),
 				'choices' => array(
 					array(
 						'label' => esc_html__( 'Work', 'gravityformscapsulecrm' ),
-						'value' => 'phone_work'	
+						'value' => 'phone_work',
 					),
 					array(
 						'label' => esc_html__( 'Mobile', 'gravityformscapsulecrm' ),
-						'value' => 'phone_mobile'	
+						'value' => 'phone_mobile',
 					),
 					array(
 						'label' => esc_html__( 'Fax', 'gravityformscapsulecrm' ),
-						'value' => 'phone_fax'	
+						'value' => 'phone_fax',
 					),
 					array(
 						'label' => esc_html__( 'Home', 'gravityformscapsulecrm' ),
-						'value' => 'phone_home'	
+						'value' => 'phone_home',
 					),
 					array(
 						'label' => esc_html__( 'Direct', 'gravityformscapsulecrm' ),
-						'value' => 'phone_direct'	
+						'value' => 'phone_direct',
 					),
-				)
+				),
 			),
-			array(	
+			array(
 				'label'   => esc_html__( 'Address', 'gravityformscapsulecrm' ),
 				'choices' => array(
 					array(
 						'label' => esc_html__( 'Office', 'gravityformscapsulecrm' ),
-						'value' => 'address_office'	
+						'value' => 'address_office',
 					),
 					array(
 						'label' => esc_html__( 'Home', 'gravityformscapsulecrm' ),
-						'value' => 'address_home'	
+						'value' => 'address_home',
 					),
 					array(
 						'label' => esc_html__( 'Postal', 'gravityformscapsulecrm' ),
-						'value' => 'address_postal'	
+						'value' => 'address_postal',
 					),
-				)
+				),
 			),
-			array(	
+			array(
 				'label'   => esc_html__( 'Website', 'gravityformscapsulecrm' ),
 				'choices' => array(
 					array(
 						'label' => esc_html__( 'URL', 'gravityformscapsulecrm' ),
-						'value' => 'website_url'	
+						'value' => 'website_url',
 					),
 					array(
 						'label' => esc_html__( 'Skype', 'gravityformscapsulecrm' ),
-						'value' => 'website_skype'	
+						'value' => 'website_skype',
 					),
 					array(
 						'label' => esc_html__( 'Twitter', 'gravityformscapsulecrm' ),
-						'value' => 'website_twitter'	
+						'value' => 'website_twitter',
 					),
 					array(
 						'label' => esc_html__( 'Facebook', 'gravityformscapsulecrm' ),
-						'value' => 'website_facebook'	
+						'value' => 'website_facebook',
 					),
 					array(
 						'label' => esc_html__( 'LinkedIn', 'gravityformscapsulecrm' ),
-						'value' => 'website_linked_in'	
+						'value' => 'website_linked_in',
 					),
 					array(
 						'label' => esc_html__( 'Xing', 'gravityformscapsulecrm' ),
-						'value' => 'website_xing'	
+						'value' => 'website_xing',
 					),
 					array(
 						'label' => esc_html__( 'Feed', 'gravityformscapsulecrm' ),
-						'value' => 'website_feed'	
+						'value' => 'website_feed',
 					),
 					array(
 						'label' => esc_html__( 'Google Plus', 'gravityformscapsulecrm' ),
-						'value' => 'website_google_plus'	
+						'value' => 'website_google_plus',
 					),
 					array(
 						'label' => esc_html__( 'Flickr', 'gravityformscapsulecrm' ),
-						'value' => 'website_flickr'	
+						'value' => 'website_flickr',
 					),
 					array(
 						'label' => esc_html__( 'GitHub', 'gravityformscapsulecrm' ),
-						'value' => 'website_github'	
+						'value' => 'website_github',
 					),
 					array(
 						'label' => esc_html__( 'YouTube', 'gravityformscapsulecrm' ),
-						'value' => 'website_youtube'	
+						'value' => 'website_youtube',
 					),
-				)
+				),
 			),
 		);
-		
+
 	}
+
+
+
+
+
+	// # FEED LIST -----------------------------------------------------------------------------------------------------
 
 	/**
 	 * Setup columns for feed list table.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
+	 *
 	 * @return array
 	 */
 	public function feed_list_columns() {
-		
+
 		return array(
 			'feed_name' => esc_html__( 'Name', 'gravityformscapsulecrm' ),
-			'action'    => esc_html__( 'Action', 'gravityformscapsulecrm' )
+			'action'    => esc_html__( 'Action', 'gravityformscapsulecrm' ),
 		);
-		
+
 	}
 
 	/**
 	 * Get action for feed list column.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @param array $feed
+	 *
+	 * @param array $feed The feed object.
+	 *
 	 * @return string
 	 */
 	public function get_column_value_action( $feed ) {
-		
-		$create_person = ( $feed['meta']['create_person'] == '1' );
-		$create_task   = ( $feed['meta']['create_task'] == '1' );
-		
+
+		$create_person = rgars( $feed, 'meta/create_person' );
+		$create_task   = rgars( $feed, 'meta/create_task' );
+
 		if ( $create_person && $create_task ) {
-			
+
 			return esc_html__( 'Create Person & Task', 'gravityformscapsulecrm' );
-			
+
 		} else if ( $create_person ) {
-			
+
 			return esc_html__( 'Create Person', 'gravityformscapsulecrm' );
-			
+
 		} else if ( $create_task ) {
-			
+
 			return esc_html__( 'Create Task', 'gravityformscapsulecrm' );
-			
+
 		}
-		
+
+		return esc_html__( 'No Action', 'gravityformscapsulecrm' );
+
 	}
 
 	/**
 	 * Set feed creation control.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
+	 *
+	 * @uses   GFCapsuleCRM::initialize_api()
+	 *
 	 * @return bool
 	 */
 	public function can_create_feed() {
-		
+
 		return $this->initialize_api();
-		
+
 	}
 
 	/**
 	 * Enable feed duplication.
-	 * 
+	 *
+	 * @since  1.1
 	 * @access public
+	 *
+	 * @param int|array $id The ID of the feed to be duplicated or the feed object when duplicating a form.
+	 *
 	 * @return bool
 	 */
-	public function can_duplicate_feed() {
-		
+	public function can_duplicate_feed( $id ) {
+
 		return true;
-		
+
 	}
+
+
+
+
+
+	// # FEED PROCESSING -----------------------------------------------------------------------------------------------
 
 	/**
 	 * Process feed.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @param array $feed
-	 * @param array $entry
-	 * @param array $form
+	 *
+	 * @param array $feed  The Feed object.
+	 * @param array $entry The Entry object.
+	 * @param array $form  The Form object.
+	 *
+	 * @uses   GFAddOn::get_field_value()
+	 * @uses   GFCapsuleCRM::create_case()
+	 * @uses   GFCapsuleCRM::create_opportunity()
+	 * @uses   GFCapsuleCRM::create_person()
+	 * @uses   GFCapsuleCRM::create_task()
+	 * @uses   GFCapsuleCRM::init()
+	 * @uses   GFCapsuleCRM::update_person()
+	 * @uses   GF_CapsuleCRM_API::search_parties()
+	 * @uses   GFFeedAddOn::add_feed_error()
 	 */
 	public function process_feed( $feed, $entry, $form ) {
-		
-		$this->log_debug( __METHOD__ . '(): Processing feed.' );
-		
-		/* If API instance is not initialized, exit. */
-		if ( ! $this->initialize_api() ) {
-			
-			$this->add_feed_error( esc_html__( 'Feed was not processed because API was not initialized.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
-			return;
-			
-		}
-		
-		/* Create person? */
-		if ( $feed['meta']['create_person'] == '1') {
-			
-			if ( $feed['meta']['update_person_enable'] == '1' ) {
-				
-				$existing_people = $this->api->find_people_by_email( $this->get_field_value( $form, $entry, $feed['meta']['person_standard_fields_email_address'] ) );
-			
-				if ( empty( $existing_people ) )
-					$person = $this->create_person( $feed, $entry, $form );
-				else
-					$person = $this->update_person( $existing_people[0], $feed, $entry, $form );
-			
-			} else {
-				
-				$person = $this->create_person( $feed, $entry, $form );
-			
-			}
-			
-			/* Create case? */
-			if ( $feed['meta']['create_case'] == '1' && is_array( $person ) )
-				$case = $this->create_case( $person, $feed, $entry, $form );
 
-			/* Create opportunity? */
-			if ( $feed['meta']['create_opportunity'] == '1' && is_array( $person ) )
-				$opportunity = $this->create_opportunity( $person, $feed, $entry, $form );
-			
+		// If API is not initialized, exit.
+		if ( ! $this->initialize_api() ) {
+			$this->add_feed_error( esc_html__( 'Feed was not processed because API was not initialized.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
+
+			return;
 		}
-		
-		/* Create task? */
-		if ( $feed['meta']['create_task'] == '1') {
-			
-			$task = $this->create_task( $feed, $entry, $form );
-			
+
+		// Create party.
+		if ( rgars( $feed, 'meta/create_person' ) ) {
+
+			// Update existing party.
+			if ( rgars( $feed, 'meta/update_person_enable' ) ) {
+
+				// Get email address.
+				$email_address = rgars( $feed, 'meta/person_standard_fields_email_address' );
+				$email_address = $this->get_field_value( $form, $entry, $email_address );
+
+				try {
+
+					// Search for existing party.
+					$parties = $this->api->search_parties( urlencode( $email_address ) );
+
+					// Log parties response.
+					$this->log_debug( __METHOD__ . '(): Found parties: ' . print_r( $parties, true ) );
+
+					// If existing party was found, update.
+					if ( $parties ) {
+						$party = $this->update_person( $parties[0], $feed, $entry, $form );
+					} else {
+						$party = $this->create_person( $feed, $entry, $form );
+					}
+
+				} catch ( Exception $e ) {
+
+					// Log that we could not search for existing parties.
+					$this->add_feed_error( 'Unable to search for existing party, creating new party; ' . $e->getMessage(), $feed, $entry, $form );
+
+					// Create party.
+					$party = $this->create_person( $feed, $entry, $form );
+
+				}
+
+			} else {
+
+				// Create party.
+				$party = $this->create_person( $feed, $entry, $form );
+
+			}
+
+			// Create case.
+			if ( rgars( $feed, 'meta/create_case' ) == '1' && $party ) {
+				$this->create_case( $party, $feed, $entry, $form );
+			}
+
+			// Create opportunity.
+			if ( rgars( $feed, 'meta/create_opportunity' ) == '1' && $party ) {
+				$this->create_opportunity( $party, $feed, $entry, $form );
+			}
+
+		}
+
+		// Create task.
+		if ( rgars( $feed, 'meta/create_task' ) ) {
+			$this->create_task( $feed, $entry, $form );
 		}
 
 	}
 
 	/**
 	 * Create a new case.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @param array $person
-	 * @param array $feed
-	 * @param array $entry
-	 * @param array $form
-	 * @return null|array $case
+	 *
+	 * @param array $party Capsule CRM party object.
+	 * @param array $feed  The feed object.
+	 * @param array $entry The entry object.
+	 * @param array $form  The form object.
+	 *
+	 * @uses   GFAddOn::log_debug()
+	 * @uses   GF_CapsuleCRM_API::create_case()
+	 * @uses   GFCommon::replace_variables()
+	 * @uses   GFFeedAddOn::add_feed_error()
+	 *
+	 * @return null|array
 	 */
-	public function create_case( $person, $feed, $entry, $form ) {
-		
+	public function create_case( $party, $feed, $entry, $form ) {
+
+		// Log that we are creating a case.
 		$this->log_debug( __METHOD__ . '(): Creating case.' );
 
-		/* Prepare case object. */
+		// Initialize case object.
 		$case = array(
 			'name'        => GFCommon::replace_variables( $feed['meta']['case_name'], $form, $entry ),
 			'description' => GFCommon::replace_variables( $feed['meta']['case_description'], $form, $entry ),
 			'status'      => $feed['meta']['case_status'],
-			'owner'       => $feed['meta']['case_owner']
+			'party'       => array( 'id' => $party['id'] ),
 		);
-		
-		/* If the name is empty, exit. */
-		if ( rgblank( $case['name'] ) ) {
-			
-			$this->add_feed_error( esc_html__( 'Case could not be created because case name was not provided.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
-			return null;
-			
+
+		// Add case owner.
+		if ( rgars( $feed, 'meta/case_owner' ) ) {
+			$case['owner'] = array( 'username' => $feed['meta']['case_owner'] );
 		}
 
-		/* Create task. */
+		/**
+		 * Modify the Capsule CRM case.
+		 *
+		 * @since 1.1.4
+		 *
+		 * @param array $case  Capsule CRM case.
+		 * @param array $form  The form object.
+		 * @param array $entry The entry object.
+		 * @param array $feed  The feed object.
+		 */
+		$case = gf_apply_filters( array(
+			'gform_capsulecrm_case',
+			$form['id'],
+			$feed['id'],
+		), $case, $form, $entry, $feed );
+
+		// If the name is empty, exit.
+		if ( rgblank( $case['name'] ) ) {
+			$this->add_feed_error( esc_html__( 'Case could not be created because case name was not provided.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
+			return null;
+		}
+
 		try {
-			
-			$case['id'] = $this->api->create_case( $person['id'], $case );
-			
+
+			// Log case being created.
+			$this->log_debug( __METHOD__ . '(): Creating case: ' . print_r( $case, true ) );
+
+			// Create case.
+			$case = $this->api->create_case( $case );
+			$case = $case['kase'];
+
+			// Log that case was created.
+			$this->log_debug( __METHOD__ . '(): Case #' . $case['id'] . ' created.' );
+
+			// Assign case ID to entry object.
 			gform_update_meta( $entry['id'], 'capsulecrm_case_id', $case['id'] );
 
-			$this->log_debug( __METHOD__ . '(): Case #' . $case['id'] . ' created.' );
-			
-		} catch ( Exception $e ) {
-			
+			return $case;
+
+		} catch ( GF_CapsuleCRM_Exception $e ) {
+
 			$this->add_feed_error( sprintf(
 				esc_html__( 'Case could not be created. %s', 'gravityformscapsulecrm' ),
 				$e->getMessage()
 			), $feed, $entry, $form );
-			
-			return null;
-			
+
+			// Log additional errors.
+			if ( $e->getErrors() ) {
+				$this->log_error( __METHOD__ . '(): Additional error messages: ' . print_r( $e->getErrors() ) );
+			}
+
 		}
-		
-		return $case;
-		
+
+		return null;
+
 	}
 
 	/**
 	 * Create a new opportunity.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @param array $person
-	 * @param array $feed
-	 * @param array $entry
-	 * @param array $form
-	 * @return null|array $opportunity
+	 *
+	 * @param array $party Capsule CRM party object.
+	 * @param array $feed  The Feed object.
+	 * @param array $entry The Entry object.
+	 * @param array $form  The Form object.
+	 *
+	 * @uses   GFAddOn::log_debug()
+	 * @uses   GF_CapsuleCRM_API::create_opportunity()
+	 * @uses   GFCommon::replace_variables()
+	 * @uses   GFFeedAddOn::add_feed_error()
+	 *
+	 * @return null|array
 	 */
-	public function create_opportunity( $person, $feed, $entry, $form ) {
-		
+	public function create_opportunity( $party, $feed, $entry, $form ) {
+
+		// Log that we are creating an opportunity.
 		$this->log_debug( __METHOD__ . '(): Creating opportunity.' );
 
-		/* Prepare opportunity object. */
+		// Initialize opportunity object.
 		$opportunity = array(
 			'name'        => GFCommon::replace_variables( $feed['meta']['opportunity_name'], $form, $entry ),
 			'description' => GFCommon::replace_variables( $feed['meta']['opportunity_description'], $form, $entry ),
-			'milestoneId' => $feed['meta']['opportunity_milestone'],
-			'owner'       => $feed['meta']['opportunity_owner']
+			'party'       => array( 'id' => $party['id'] ),
 		);
-		
-		/* If the name is empty, exit. */
-		if ( rgblank( $opportunity['name'] ) ) {
-			
-			$this->add_feed_error( esc_html__( 'Opportunity could not be created because opportunity name was not provided.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
-			
-			return null;
-			
+
+		// Add opportunity milestone.
+		if ( rgars( $feed, 'meta/opportunity_milestone' ) ) {
+			$opportunity['milestone'] = array( 'name' => $feed['meta']['opportunity_milestone'] );
 		}
 
-		/* Create task. */
+		// Add opportunity owner.
+		if ( rgars( $feed, 'meta/opportunity_owner' ) ) {
+			$opportunity['owner'] = array( 'username' => $feed['meta']['opportunity_owner'] );
+		}
+
+		/**
+		 * Modify the Capsule CRM opportunity.
+		 *
+		 * @since 1.1.4
+		 *
+		 * @param array $opportunity Capsule CRM opportunity.
+		 * @param array $form        The form object.
+		 * @param array $entry       The entry object.
+		 * @param array $feed        The feed object.
+		 */
+		$opportunity = gf_apply_filters( array( 'gform_capsulecrm_opportunity', $form['id'], $feed['id'] ), $opportunity, $form, $entry, $feed );
+
+		// If the name is empty, exit.
+		if ( rgblank( $opportunity['name'] ) ) {
+			$this->add_feed_error( esc_html__( 'Opportunity could not be created because opportunity name was not provided.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
+			return null;
+		}
+
 		try {
-			
-			$opportunity['id'] = $this->api->create_opportunity( $person['id'], $opportunity );
-			
+
+			// Log opportunity being created.
+			$this->log_debug( __METHOD__ . '(): Creating opportunity: ' . print_r( $opportunity, true ) );
+
+			// Create opportunity.
+			$opportunity = $this->api->create_opportunity( $opportunity );
+			$opportunity = $opportunity['opportunity'];
+
+			// Log that opportunity was created.
+			$this->log_debug( __METHOD__ . '(): Opportunity #' . $opportunity['id'] . ' created.' );
+
+			// Assign opportunity ID to entry object.
 			gform_update_meta( $entry['id'], 'capsulecrm_opportunity_id', $opportunity['id'] );
 
-			$this->log_debug( __METHOD__ . '(): Opportunity #' . $opportunity['id'] . ' created.' );
-			
+			return $opportunity;
+
 		} catch ( Exception $e ) {
-			
+
 			$this->add_feed_error( sprintf(
 				esc_html__( 'Opportunity could not be created. %s', 'gravityformscapsulecrm' ),
 				$e->getMessage()
 			), $feed, $entry, $form );
 
-			return null;
-			
 		}
-		
-		return $opportunity;
-		
+
+		return null;
+
 	}
 
 	/**
 	 * Create a new person.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @param array $feed
-	 * @param array $entry
-	 * @param array $form
-	 * @return null|array $person
+	 *
+	 * @param array $feed  The Feed object.
+	 * @param array $entry The Entry object.
+	 * @param array $form  The Form object.
+	 *
+	 * @return null|array
 	 */
 	public function create_person( $feed, $entry, $form ) {
-		
+
+		// Log that we are creating a person.
 		$this->log_debug( __METHOD__ . '(): Creating person.' );
 
-		/* Setup mapped fields array. */
-		$person_standard_fields = $this->get_field_map_fields( $feed, 'person_standard_fields' );
-		$person_custom_fields = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
+		// Get field mappings.
+		$standard_fields = $this->get_field_map_fields( $feed, 'person_standard_fields' );
+		$custom_fields   = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
 
-		/* Prepare task object */
+		// Initialize person object.
 		$person = array(
-			'firstName'        => $this->get_field_value( $form, $entry, $person_standard_fields['first_name'] ),
-			'lastName'         => $this->get_field_value( $form, $entry, $person_standard_fields['last_name'] ),
-			'jobTitle'         => isset( $person_custom_fields['title'] ) ? $this->get_field_value( $form, $entry, $person_custom_fields['title'] ) : '',
-			'organisationName' => isset( $person_custom_fields['organization'] ) ? $this->get_field_value( $form, $entry, $person_custom_fields['organization'] ) : '',
-			'about'            => GFCommon::replace_variables( $feed['meta']['person_about'], $form, $entry, false, false, false, 'text' ),
-			'contacts'         => array(
-				'address'  => array(),
-				'email'    => array(
-					array(
-						'emailAddress' => $this->get_field_value( $form, $entry, $person_standard_fields['email_address'] )
-					)
+			'type'           => 'person',
+			'firstName'      => $this->get_field_value( $form, $entry, $standard_fields['first_name'] ),
+			'lastName'       => $this->get_field_value( $form, $entry, $standard_fields['last_name'] ),
+			'about'          => GFCommon::replace_variables( $feed['meta']['person_about'], $form, $entry, false, false, false, 'text' ),
+			'jobTitle'       => rgar( $custom_fields, 'title' ) ? $this->get_field_value( $form, $entry, $custom_fields['title'] ) : '',
+			'emailAddresses' => array(
+				array(
+					'address' => $this->get_field_value( $form, $entry, $standard_fields['email_address'] ),
 				),
-				'phone'    => array(),
-				'website'  => array()
-			)
+			),
 		);
 
-		/* If the name is empty, exit. */
-		if ( rgblank( $person['firstName'] ) || rgblank( $person['lastName'] ) ) {
-			
-			$this->add_feed_error( esc_html__( 'Person could not be created as first and/or last name were not provided.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
-			
-			return null;
-			
+		// Add organization.
+		if ( rgar( $custom_fields, 'organization' ) ) {
+
+			// Get organization name.
+			$organization_name = $this->get_field_value( $form, $entry, $custom_fields['organization'] );
+
+			if ( ! rgblank( $organization_name ) ) {
+				$person['organisation']['name'] = $organization_name;
+			}
+
 		}
 
-		/* If the email address is empty, exit. */
-		if ( GFCommon::is_invalid_or_empty_email( $person['contacts']['email'][0]['emailAddress'] ) ) {
-			
-			$this->add_feed_error( esc_html__( 'Person could not be created as email address was not provided.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
-			
-			return null;
-			
-		}
-
-		/* Add any mapped addresses. */
+		// Add contact data.
 		$person = $this->add_person_address_data( $person, $feed, $entry, $form );
-
-		/* Add any mapped email addresses. */
 		$person = $this->add_person_email_data( $person, $feed, $entry, $form );
-
-		/* Add any mapped phone numbers. */
 		$person = $this->add_person_phone_data( $person, $feed, $entry, $form );
-
-		/* Add any mapped websites. */
 		$person = $this->add_person_website_data( $person, $feed, $entry, $form );
 
-		/* Create person. */
-		$this->log_debug( __METHOD__ . '(): Creating person: ' . print_r( $person, true ) );
-		
+		/**
+		 * Modify the Capsule CRM person.
+		 *
+		 * @since 1.1.4
+		 *
+		 * @param array $person Capsule CRM person.
+		 * @param array $form   The form object.
+		 * @param array $entry  The entry object.
+		 * @param array $feed   The feed object.
+		 */
+		$person = gf_apply_filters( array(
+			'gform_capsulecrm_person',
+			$form['id'],
+			$feed['id'],
+		), $person, $form, $entry, $feed );
+
+		// If the name is empty, exit.
+		if ( rgblank( $person['firstName'] ) || rgblank( $person['lastName'] ) ) {
+			$this->add_feed_error( esc_html__( 'Person could not be created as first and/or last name were not provided.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
+			return null;
+		}
+
+		// If the email address is invalid, exit.
+		if ( GFCommon::is_invalid_or_empty_email( $person['emailAddresses'][0]['address'] ) ) {
+			$this->add_feed_error( esc_html__( 'Person could not be created as email address was not provided.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
+			return null;
+		}
+
 		try {
-			
-			$person['id'] = $this->api->create_person( $person );
-			
+
+			// Log person object being created.
+			$this->log_debug( __METHOD__ . '(): Creating person: ' . print_r( $person, true ) );
+
+			// Create party.
+			$person = $this->api->create_party( $person );
+			$person = $person['party'];
+
+			// Log that person was created.
+			$this->log_debug( __METHOD__ . '(): Person #' . $person['id'] . ' created.' );
+
+			// Assign person ID to entry object.
 			gform_update_meta( $entry['id'], 'capsulecrm_person_id', $person['id'] );
 
-			$this->log_debug( __METHOD__ . '(): Person #' . $person['id'] . ' created.' );
-			
-		} catch ( Exception $e ) {
-			
+			return $person;
+
+		} catch ( GF_CapsuleCRM_Exception $e ) {
+
 			$this->add_feed_error( sprintf(
 				esc_html__( 'Person could not be created. %s', 'gravityformscapsulecrm' ),
 				$e->getMessage()
 			), $feed, $entry, $form );
-			
-			return null;
-			
+
+			// Log additional errors.
+			if ( $e->getErrors() ) {
+				$this->log_error( __METHOD__ . '(): Additional error messages: ' . print_r( $e->getErrors() ) );
+			}
+
 		}
-				
-		return $person;
-		
+
+		return null;
+
 	}
 
 	/**
 	 * Create a new task.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @param array $feed
-	 * @param array $entry
-	 * @param array $form
-	 * @return null|array $task
+	 *
+	 * @param array $feed  The Feed object.
+	 * @param array $entry The Entry object.
+	 * @param array $form  The Form object.
+	 *
+	 * @uses   GFAddOn::log_debug()
+	 * @uses   GF_CapsuleCRM_API::create_task()
+	 * @uses   GFCommon::replace_variables()
+	 * @uses   GFFeedAddOn::add_feed_error()
+	 *
+	 * @return null|array
 	 */
 	public function create_task( $feed, $entry, $form ) {
-		
+
+		// Log that we are creating a task.
 		$this->log_debug( __METHOD__ . '(): Creating task.' );
 
-		/* Prepare task object */
+		// Initialize task object.
 		$task = array(
 			'description' => GFCommon::replace_variables( $feed['meta']['task_description'], $form, $entry ),
 			'detail'      => GFCommon::replace_variables( $feed['meta']['task_detail'], $form, $entry ),
-			'dueDateTime' => date( 'c', strtotime( '+' . $feed['meta']['task_days_until_due'] . ' days' ) ),
-			'category'    => $feed['meta']['task_category'],
+			'dueOn'       => date( 'Y-m-d', strtotime( '+' . $feed['meta']['task_days_until_due'] . ' days' ) ),
+			'dueTime'     => date( 'H:i:s', strtotime( '+' . $feed['meta']['task_days_until_due'] . ' days' ) ),
 			'status'      => $feed['meta']['task_status'],
-			'owner'       => $feed['meta']['task_owner']
 		);
-		
-		/* If the description is empty, exit. */
+
+		// Add task category.
+		if ( rgars( $feed, 'meta/task_category' ) ) {
+			$task['category'] = array( 'name' => $feed['meta']['task_category'] );
+		}
+
+		// Add task owner.
+		if ( rgars( $feed, 'meta/task_owner' ) ) {
+			$task['owner'] = array( 'username' => $feed['meta']['task_owner'] );
+		}
+
+		// Add case.
+		if ( 'case' == rgars( $feed, 'meta/assign_task' ) ) {
+			$task['kase']['id'] = gform_get_meta( $entry['id'], 'capsulecrm_case_id' );
+		}
+
+		// Add opportunity.
+		if ( 'opportunity' == rgars( $feed, 'meta/assign_task' ) ) {
+			$task['opportunity']['id'] = gform_get_meta( $entry['id'], 'capsulecrm_opportunity_id' );
+		}
+
+		// Add party.
+		if ( 'person' == rgars( $feed, 'meta/assign_task' ) ) {
+			$task['party']['id'] = gform_get_meta( $entry['id'], 'capsulecrm_person_id' );
+		}
+
+		/**
+		 * Modify the Capsule CRM task.
+		 *
+		 * @since 1.1.4
+		 *
+		 * @param array $task  Capsule CRM task.
+		 * @param array $form  The form object.
+		 * @param array $entry The entry object.
+		 * @param array $feed  The feed object.
+		 */
+		$task = gf_apply_filters( array(
+			'gform_capsulecrm_task',
+			$form['id'],
+			$feed['id'],
+		), $task, $form, $entry, $feed );
+
+		// If the description is empty, exit.
 		if ( rgblank( $task['description'] ) ) {
-			
 			$this->add_feed_error( esc_html__( 'Task could not be created as the task description was not provided.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
 			return null;
-			
 		}
-		
-		/* Prepare task assignment. */
-		$assign_to = $assign_object_id = null;
-		
-		if ( $feed['meta']['assign_task'] !== 'none' ) {
-			
-			$object_type = $feed['meta']['assign_task'];
-			$assign_object_id = gform_get_meta( $entry['id'], 'capsulecrm_' . $object_type . '_id' );
-			
-			if ( $assign_object_id ) {
-				
-				if ( $object_type == 'case' )
-					$assign_to = 'kase';
-				else if ( $object_type == 'person' )
-					$assign_to = 'party';
-				else
-					$assign_to = $object_type;
-				
-			}
-			
-		}
-		
-		/* Create task. */
-		$this->log_debug( __METHOD__ . '(): Creating task: ' . print_r( $task, true ) );
-		try {
-			
-			$task['id'] = $this->api->create_task( $task, $assign_to, $assign_object_id );
 
+		try {
+
+			// Log task being created.
+			$this->log_debug( __METHOD__ . '(): Creating task: ' . print_r( $task, true ) );
+
+			// Create task.
+			$task = $this->api->create_task( $task );
+			$task = $task['task'];
+
+			// Log that task was created.
+			$this->log_debug( __METHOD__ . '(): Task #' . $task['id'] . ' created.' );
+
+			// Assign task ID to entry object.
 			gform_update_meta( $entry['id'], 'capsulecrm_task_id', $task['id'] );
 
-			$this->log_debug( __METHOD__ . '(): Task #' . $task['id'] . ' created.' );
-			
+			return $task;
+
 		} catch ( Exception $e ) {
-			
+
 			$this->add_feed_error( sprintf(
 				esc_html__( 'Task could not be created. %s', 'gravityformscapsulecrm' ),
 				$e->getMessage()
 			), $feed, $entry, $form );
 
-			return null;
-			
 		}
-		
-		return $task;
-		
+
+		return null;
+
 	}
 
 	/**
 	 * Update existing person.
-	 * 
+	 *
 	 * @access public
-	 * @param array $person
-	 * @param array $feed
-	 * @param array $entry
-	 * @param array $form
+	 *
+	 * @param array $person The person to update.
+	 * @param array $feed   The feed object.
+	 * @param array $entry  The entry object.
+	 * @param array $form   Thew form object.
+	 *
 	 * @return array $person
 	 */
 	public function update_person( $person, $feed, $entry, $form ) {
-		
+
+		// Log that we are updating a person.
 		$this->log_debug( __METHOD__ . '(): Updating person #' . $person['id'] . '.' );
 
-		/* Save original person object in case. */
+		// Store a reference of the original person.
 		$original_person = $person;
 
-		/* Setup mapped fields array. */
-		$person_standard_fields = $this->get_field_map_fields( $feed, 'person_standard_fields' );
-		$person_custom_fields = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
+		// Get field mappings.
+		$standard_fields = $this->get_field_map_fields( $feed, 'person_standard_fields' );
+		$custom_fields   = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
 
-		/* Move addresses to arrays if they are not already arrays. */
-		if ( isset( $person['contacts']['address'] ) ) {
-			
-			$addresses = array_values( $person['contacts']['address'] );
-			
-			if ( ! is_array( $addresses[0] ) ) {
-				
-				$person['contacts']['address'] = array( $person['contacts']['address'] );
-				
+		// Add standard data.
+		$person['firstName'] = $this->get_field_value( $form, $entry, $standard_fields['first_name'] );
+		$person['lastName']  = $this->get_field_value( $form, $entry, $standard_fields['last_name'] );
+		$person['jobTitle']  = rgar( $custom_fields, 'title' ) ? $this->get_field_value( $form, $entry, $custom_fields['title'] ) : '';
+
+		// Add organization.
+		if ( rgar( $custom_fields, 'organization' ) ) {
+
+			// Get organization name.
+			$organization_name = $this->get_field_value( $form, $entry, $custom_fields['organization'] );
+
+			if ( ! rgblank( $organization_name ) ) {
+				$person['organisation'] = array( 'name' => $organization_name );
+			} else {
+				$person['organisation'] = null;
 			}
 
-		} else if ( ! isset( $person['contacts']['address'] ) ) {
-			
-			$person['contacts']['address'] = array();
-			
+		} else {
+
+			$person['organisation'] = null;
+
 		}
 
-		/* Move email addresses to arrays if they are not already arrays. */
-		if ( isset( $person['contacts']['email'] ) ) {
-			
-			$email_addresses = array_values( $person['contacts']['email'] );
-			
-			if ( ! is_array( $email_addresses[0] ) ) {
-				
-				$person['contacts']['email'] = array( $person['contacts']['email'] );
-				
-			}
-			
-		} else if ( ! isset( $person['contacts']['email'] ) ) {
-			
-			$person['contacts']['email'] = array();
-			
-		}
-
-		/* Move phone numbers to arrays if they are not already arrays. */
-		if ( isset( $person['contacts']['phone'] ) ) {
-			
-			$phone_numbers = array_values( $person['contacts']['phone'] );
-			
-			if ( ! is_array( $phone_numbers[0] ) ) {
-			
-				$person['contacts']['phone'] = array( $person['contacts']['phone'] );
-				
-			}
-
-		} else if ( ! isset( $person['contacts']['phone'] ) ) {
-			
-			$person['contacts']['phone'] = array();
-			
-		}
-
-		/* Move websites to arrays if they are not already arrays. */
-		if ( isset( $person['contacts']['website'] ) ) {
-			
-			$websites = array_values( $person['contacts']['website'] );
-
-			if ( ! is_array( $websites[0] ) ) {
-			
-				$person['contacts']['website'] = array( $person['contacts']['website'] );
-				
-			}
-			
-		} else if ( ! isset( $person['contacts']['website'] ) ) {
-			
-			$person['contacts']['website'] = array();
-			
-		}
-		
-		/* Add standard data. */
-		$person['firstName']        = $this->get_field_value( $form, $entry, $person_standard_fields['first_name'] );
-		$person['lastName']         = $this->get_field_value( $form, $entry, $person_standard_fields['last_name'] );
-		$person['jobTitle']         = isset( $person_custom_fields['title'] ) ? $this->get_field_value( $form, $entry, $person_custom_fields['title'] ) : '';
-		$person['organisationName'] = isset( $person_custom_fields['organization'] ) ? $this->get_field_value( $form, $entry, $person_custom_fields['organization'] ) : '';
-		
-		/* Remove organization ID. */
-		unset( $person['organisationId'] );
-
-		/* Either replace or append new contact information. */
+		// Replace or append contact data.
 		if ( $feed['meta']['update_person_action'] == 'replace' ) {
-			
-			/* Remove current contact information. */
-			foreach ( $person['contacts'] as &$contact_type ) {
-				
-				if ( ! empty( $contact_type ) ) {
-					
-					foreach ( $contact_type as &$contact_data ) {
-						
-						$contact_data['@delete'] = true;
-						
-					}
-					
+
+			// Get data keys.
+			$data_keys = array( 'emailAddresses', 'addresses', 'phoneNumbers', 'websites' );
+
+			// Remove current contact information.
+			foreach ( $data_keys as $data_key ) {
+
+				// Skip data type if empty.
+				if ( empty( $person[ $data_key ] ) ) {
+					continue;
 				}
-				
+
+				// Loop through items.
+				foreach ( $person[ $data_key ] as $i => $data ) {
+					$person[ $data_key ][ $i ]['_delete'] = true;
+				}
+
 			}
-			
-			$person['about']               = GFCommon::replace_variables( $feed['meta']['person_about'], $form, $entry, false, false, false, 'text' );
-			$person['contacts']['email'][] = array( 'emailAddress' => $this->get_field_value( $form, $entry, $person_standard_fields['email_address'] ) );
-			
-			/* Add any mapped addresses. */
+
+			// Add about and email address.
+			$person['about']            = GFCommon::replace_variables( $feed['meta']['person_about'], $form, $entry, false, false, false, 'text' );
+			$person['emailAddresses'][] = array( 'address' => $this->get_field_value( $form, $entry, $standard_fields['email_address'] ) );
+
+			// Add contact data.
 			$person = $this->add_person_address_data( $person, $feed, $entry, $form );
-	
-			/* Add any mapped email addresses. */
 			$person = $this->add_person_email_data( $person, $feed, $entry, $form );
-	
-			/* Add any mapped phone numbers. */
 			$person = $this->add_person_phone_data( $person, $feed, $entry, $form );
-	
-			/* Add any mapped websites. */
 			$person = $this->add_person_website_data( $person, $feed, $entry, $form );
 
 		} else if ( $feed['meta']['update_person_action'] == 'append' ) {
-			
-			$about = GFCommon::replace_variables( $feed['meta']['person_about'], $form, $entry, false, false, false, 'text' );
-			
-			/* Add standard data. */
-			if ( ! isset( $person['jobTitle'] ) ) {
-				$person['jobTitle'] = null;
-			}
 
-			if ( ! isset( $person['organisationName'] ) ) {
-				$person['organisationName'] = null;
-			}
-			
-			$person['about']             = isset( $person['about'] ) ? $person['about'] . ' ' . $about : $about;
-			
-			/* Add any mapped addresses. */
-			$person = $this->add_person_address_data( $person, $feed, $entry, $form, true);
-	
-			/* Add any mapped email addresses. */
+			// Add about.
+			$person['about'] .= PHP_EOL . PHP_EOL . GFCommon::replace_variables( $feed['meta']['person_about'], $form, $entry, false, false, false, 'text' );
+
+			// Add contact data.
+			$person = $this->add_person_address_data( $person, $feed, $entry, $form, true );
 			$person = $this->add_person_email_data( $person, $feed, $entry, $form, true );
-	
-			/* Add any mapped phone numbers. */
 			$person = $this->add_person_phone_data( $person, $feed, $entry, $form, true );
-	
-			/* Add any mapped websites. */
 			$person = $this->add_person_website_data( $person, $feed, $entry, $form, true );
 
 		}
-		
-		/* Update person. */
-		$this->log_debug( __METHOD__ . '(): Updating person: ' . print_r( $person, true ) );
+
+		/**
+		 * Modify the Capsule CRM person.
+		 *
+		 * @since 1.1.4
+		 *
+		 * @param array $person Capsule CRM person.
+		 * @param array $form   The form object.
+		 * @param array $entry  The entry object.
+		 * @param array $feed   The feed object.
+		 */
+		$person = gf_apply_filters( array( 'gform_capsulecrm_person', $form['id'], $feed['id'] ), $person, $form, $entry, $feed );
+
+		// If the name is empty, exit.
+		if ( rgblank( $person['firstName'] ) || rgblank( $person['lastName'] ) ) {
+			$this->add_feed_error( esc_html__( 'Person could not be updated as first and/or last name were not provided.', 'gravityformscapsulecrm' ), $feed, $entry, $form );
+			return null;
+		}
+
 		try {
-			
-			$this->api->update_person( $person['id'], $person );
-			
+
+			// Log person object being updated.
+			$this->log_debug( __METHOD__ . '(): Updating person: ' . print_r( $person, true ) );
+
+			// Update party.
+			$person = $this->api->update_party( $person['id'], $person );
+			$person = $person['party'];
+
+			// Log that person was updated.
+			$this->log_debug( __METHOD__ . '(): Person #' . $person['id'] . ' updated.' );
+
+			// Assign person ID to entry object.
 			gform_update_meta( $entry['id'], 'capsulecrm_person_id', $person['id'] );
 
-			$this->log_debug( __METHOD__ . '(): Person #' . $person['id'] . ' updated.' );
-			
-		} catch ( Exception $e ) {
-			
+			return $person;
+
+		} catch ( GF_CapsuleCRM_Exception $e ) {
+
 			$this->add_feed_error( sprintf(
-				esc_html__( 'Person #%s could not be updated. %s', 'gravityformscapsulecrm' ),
+				esc_html__( 'Person #%1$s could not be updated. %2$s', 'gravityformscapsulecrm' ),
 				$person['id'], $e->getMessage()
 			), $feed, $entry, $form );
-			
-			return $original_person;
-			
-		}
-				
-		return $person;
-		
-	}
-	
-	/**
-	 * Add address contact data to person.
-	 * 
-	 * @access public
-	 * @param array $person
-	 * @param array $feed
-	 * @param array $entry
-	 * @param array $form
-	 * @param bool $check_for_existing (default: false)
-	 * @return array $person
-	 */
-	public function add_person_address_data( $person, $feed, $entry, $form, $check_for_existing = false ) {
-		
-		$person_custom_fields = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
 
-		/* Add any mapped addresses. */
-		foreach ( $person_custom_fields as $field_key => $field ) {
-			
-			/* If this is not an address mapped field, move on. */
-			if ( strpos( $field_key, 'address_' ) !== 0 )
+			// Log additional errors.
+			if ( $e->getErrors() ) {
+				$this->log_error( __METHOD__ . '(): Additional error messages: ' . print_r( $e->getErrors() ) );
+			}
+
+			return $original_person;
+
+		}
+
+	}
+
+
+
+
+
+	// # FEED PROCESSING -----------------------------------------------------------------------------------------------
+
+	/**
+	 * Upgrade routines.
+	 *
+	 * @since  1.2
+	 * @access public
+	 *
+	 * @param string $previous_version Previously installed version number.
+	 */
+	public function upgrade( $previous_version ) {
+
+		// Set OAuth upgrade flag.
+		if ( version_compare( $previous_version, '1.2', '<' ) ) {
+			update_option( 'gform_capsulecrm_oauth_upgrade_needed', true );
+		}
+
+	}
+
+	/**
+	 * Upgrade milestones to use name instead of ID in feed setting.
+	 *
+	 * @since  1.2
+	 * @access public
+	 *
+	 * @uses   GFAddOn::log_debug()
+	 * @uses   GFAddOn::log_error()
+	 * @uses   GFCapsuleCRM::initialize_api()
+	 * @uses   GF_CapsuleCRM_API::get_milestones()
+	 * @uses   GFCommon::remove_dismissible_message()
+	 * @uses   GFFeedAddOn::get_feeds()
+	 * @uses   GFFeedAddOn::update_feed_meta()
+	 */
+	public function upgrade_milestones() {
+
+		// If API could not be initialized, return.
+		if ( ! $this->initialize_api() ) {
+			$this->log_error( __METHOD__ . '(): Unable to migrate milestones because API could not be initialized.' );
+			return;
+		}
+
+		try {
+
+			// Get milestones.
+			$milestones = $this->api->get_milestones();
+
+		} catch ( GF_CapsuleCRM_Exception $e ) {
+
+			// Log that we could not retrieve milestones.
+			$this->log_error( __METHOD__ . '(): Unable to retrieve milestones; ' . $e->getMessage() );
+
+			return;
+
+		}
+
+		// Get feeds.
+		$feeds = $this->get_feeds();
+
+		// Loop through feeds and modify milestone value.
+		foreach ( $feeds as $feed ) {
+
+			// Get old milestone ID.
+			$milestone_id = rgars( $feed, 'meta/opportunity_milestone' );
+
+			// If no milestone ID is set, skip feed.
+			if ( ! $milestone_id ) {
 				continue;
-			
+			}
+
+			// Loop through milestones.
+			foreach ( $milestones as $milestone ) {
+
+				// If ID does not match, skip.
+				if ( $milestone['id'] != $milestone_id ) {
+					continue;
+				}
+
+				// Update feed milestone ID.
+				$feed['meta']['opportunity_milestone'] = $milestone['name'];
+
+			}
+
+			// Save feed.
+			$this->update_feed_meta( $feed['id'], $feed['meta'] );
+
+		}
+
+		// Delete upgrade flag.
+		delete_option( 'gform_capsulecrm_oauth_upgrade_needed' );
+
+		// Delete message.
+		GFCommon::remove_dismissible_message( 'capsulecrm_oauth_upgrade' );
+
+	}
+
+
+
+
+
+	// # HELPER METHODS ------------------------------------------------------------------------------------------------
+
+	/**
+	 * Add address contact data to a Capsule CRM object.
+	 *
+	 * @since  1.0
+	 * @access public
+	 *
+	 * @param array $object             Capsule CRM object.
+	 * @param array $feed               The feed object.
+	 * @param array $entry              The entry object.
+	 * @param array $form               The form object.
+	 * @param bool  $check_for_existing If existing data should be checked. Defaults to false.
+	 *
+	 * @uses   GFAddOn::get_dynamic_field_map_fields()
+	 * @uses   GFCapsuleCRM::exists_in_array()
+	 * @uses   GFFormsModel::get_field()
+	 * @uses   GFFormsModel::get_input_type()
+	 *
+	 * @return array
+	 */
+	public function add_person_address_data( $object, $feed, $entry, $form, $check_for_existing = false ) {
+
+		// Get custom fields.
+		$custom_fields = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
+
+		// Loop through custom fields.
+		foreach ( $custom_fields as $field_key => $field ) {
+
+			// If this is not an address mapped field, skip.
+			if ( strpos( $field_key, 'address_' ) !== 0 ) {
+				continue;
+			}
+
+			// Get address field object.
 			$address_field = GFFormsModel::get_field( $form, $field );
-			
-			/* If the selected field is not an address field, move on. */
-			if ( GFFormsModel::get_input_type( $address_field ) !== 'address' )
+
+			// If selected field is not an Address field, skip.
+			if ( 'address' !== GFFormsModel::get_input_type( $address_field ) ) {
 				continue;
-				
-			/* Prepare the type field. */
+			}
+
+			// Prepare address type.
 			$type = ucfirst( str_replace( 'address_', '', $field_key ) );
 
-			/* Get the address field ID. */
-			$address_field_id = $address_field->id;
+			// Get address field ID.
+			$field_id = $address_field->id;
 
-			/* If any of the fields are empty, move on. */
-			if ( rgblank( $entry[$address_field_id . '.1'] ) || rgblank( $entry[$address_field_id . '.3'] ) || rgblank( $entry[$address_field_id . '.4'] ) || rgblank( $entry[$address_field_id . '.5'] ) )
+			// If any of the required inputs are empty, skip.
+			if ( ! rgar( $entry, $field_id . '.1' ) || ! rgar( $entry, $field_id . '.3' ) || ! rgar( $entry, $field_id . '.4' ) || ! rgar( $entry, $field_id . '.5' ) ) {
 				continue;
+			}
 
-			/* Check if this address is already in the address data. */
-			if ( $check_for_existing && ! empty( $person['contacts']['address'] ) && $this->exists_in_array( $person['contacts']['address'], 'street', $entry[$address_field_id . '.1'] .' '. $entry[$address_field_id . '.2'] ) )
-				continue;
-
-			/* Add the address to the contact. */
-			$person['contacts']['address'][] = array(
+			// Prepare address.
+			$address = array(
 				'type'    => $type,
-				'street'  => $entry[$address_field_id . '.1'] .' '. $entry[$address_field_id . '.2'],
-				'city'    => $entry[$address_field_id . '.3'],
-				'state'   => $entry[$address_field_id . '.4'],
-				'zip'     => $entry[$address_field_id . '.5'],
-				'country' => $entry[$address_field_id . '.6']
+				'street'  => trim( $entry[ $field_id . '.1' ] . ' ' . $entry[ $field_id . '.2' ] ),
+				'city'    => $entry[ $field_id . '.3' ],
+				'state'   => $entry[ $field_id . '.4' ],
+				'zip'     => $entry[ $field_id . '.5' ],
+				'country' => $entry[ $field_id . '.6' ],
 			);
-			
+
+			// If address is already assigned to object, skip.
+			if ( $check_for_existing && rgar( $object, 'addresses' ) && $this->exists_in_array( $object['addresses'], 'street', $address['street'] ) ) {
+				continue;
+			}
+
+			// Add address to object.
+			$object['addresses'][] = $address;
+
 		}
 
-		return $person;
-		
-	}
-	
-	/**
-	 * Add email address contact data to person.
-	 * 
-	 * @access public
-	 * @param array $person
-	 * @param array $feed
-	 * @param array $entry
-	 * @param array $form
-	 * @param bool $check_for_existing (default: false)
-	 * @return array $person
-	 */
-	public function add_person_email_data( $person, $feed, $entry, $form, $check_for_existing = false ) {
-		
-		$person_custom_fields = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
+		return $object;
 
-		/* Add any mapped email fields. */
-		foreach ( $person_custom_fields as $field_key => $field ) {
-			
-			/* Get the email address. */
+	}
+
+	/**
+	 * Add email address contact data to a Capsule CRM object.
+	 *
+	 * @since  1.0
+	 * @access public
+	 *
+	 * @param array $object             Capsule CRM object.
+	 * @param array $feed               The feed object.
+	 * @param array $entry              The entry object.
+	 * @param array $form               The form object.
+	 * @param bool  $check_for_existing If existing data should be checked. Defaults to false.
+	 *
+	 * @uses   GFAddOn::get_dynamic_field_map_fields()
+	 * @uses   GFAddOn::get_field_value()
+	 * @uses   GFCapsuleCRM::exists_in_array()
+	 * @uses   GFCommon::is_valid_email()
+	 *
+	 * @return array
+	 */
+	public function add_person_email_data( $object, $feed, $entry, $form, $check_for_existing = false ) {
+
+		// Get custom fields.
+		$custom_fields = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
+
+		// Loop through custom fields.
+		foreach ( $custom_fields as $field_key => $field ) {
+
+			// If this is not an email address field, skip.
+			if ( strpos( $field_key, 'email_' ) !== 0 ) {
+				continue;
+			}
+
+			// Get the email address.
 			$email_address = $this->get_field_value( $form, $entry, $field );
 
-			/* If this is not an email address field or the email address is blank, move on. */
-			if ( strpos( $field_key, 'email_' ) !== 0 || rgblank( $email_address ) )
+			// If email address is invalid, skip.
+			if ( ! GFCommon::is_valid_email( $email_address ) ) {
 				continue;
-				
-			/* Check if this email address is already in the email address data. */
-			if ( $check_for_existing && ! empty( $person['contacts']['email'] ) && $this->exists_in_array( $person['contacts']['email'], 'emailAddress', $email_address ) )
+			}
+
+			// If email address is already assigned to object, skip.
+			if ( $check_for_existing && rgar( $object, 'emailAddresses' ) && $this->exists_in_array( $object['emailAddresses'], 'address', $email_address ) ) {
 				continue;
-			
-			/* Prepare the type field. */
+			}
+
+			// Prepare email address type.
 			$type = ucfirst( str_replace( 'email_', '', $field_key ) );
-			
-			/* Add the email address to the contact. */
-			$person['contacts']['email'][] = array(
+
+			// Add email address to object.
+			$object['emailAddresses'][] = array(
 				'type'         => $type,
-				'emailAddress' => $email_address	
+				'emailAddress' => $email_address,
 			);
-			
+
 		}
 
-		return $person;
+		return $object;
 
 	}
 
 	/**
-	 * Add phone number contact data to person.
-	 * 
+	 * Add phone number contact data to a Capsule CRM object.
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @param array $person
-	 * @param array $feed
-	 * @param array $entry
-	 * @param array $form
-	 * @param bool $check_for_existing (default: false)
-	 * @return array $person
+	 *
+	 * @param array $object             Capsule CRM object.
+	 * @param array $feed               The feed object.
+	 * @param array $entry              The entry object.
+	 * @param array $form               The form object.
+	 * @param bool  $check_for_existing If existing data should be checked. Defaults to false.
+	 *
+	 * @uses   GFAddOn::get_dynamic_field_map_fields()
+	 * @uses   GFAddOn::get_field_value()
+	 * @uses   GFCapsuleCRM::exists_in_array()
+	 *
+	 * @return array
 	 */
-	public function add_person_phone_data( $person, $feed, $entry, $form, $check_for_existing = false ) {
-		
-		$person_custom_fields = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
+	public function add_person_phone_data( $object, $feed, $entry, $form, $check_for_existing = false ) {
 
-		/* Add any mapped phone numbers. */
-		foreach ( $person_custom_fields as $field_key => $field ) {
-			
-			/* Get the phone number. */
+		// Get custom fields.
+		$custom_fields = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
+
+		// Loop through custom fields.
+		foreach ( $custom_fields as $field_key => $field ) {
+
+			// If this is not a phone number field, skip.
+			if ( strpos( $field_key, 'phone_' ) !== 0 ) {
+				continue;
+			}
+
+			// Get the phone number.
 			$phone_number = $this->get_field_value( $form, $entry, $field );
 
-			/* If this is not an phone number field or the phone number is blank, move on. */
-			if ( strpos( $field_key, 'phone_' ) !== 0 || rgblank( $phone_number ) )
+			// If phone number is empty, skip.
+			if ( rgblank( $phone_number ) ) {
 				continue;
-				
-			/* Check if this phone number is already in the phone number data. */
-			if ( $check_for_existing && ! empty( $person['contacts']['phone'] ) && $this->exists_in_array( $person['contacts']['phone'], 'phoneNumber', $phone_number ) )
+			}
+
+			// If phone number is already assigned to object, skip.
+			if ( $check_for_existing && rgar( $object, 'phoneNumbers' ) && $this->exists_in_array( $object['phoneNumbers'], 'number', $phone_number ) ) {
 				continue;
-			
-			/* Prepare the type field. */
+			}
+
+			// Prepare phone number type.
 			$type = ucfirst( str_replace( 'phone_', '', $field_key ) );
-			
-			/* Add the phone nubmer to the contact. */
-			$person['contacts']['phone'][] = array(
-				'type'        => $type,
-				'phoneNumber' => $phone_number	
+
+			// Add phone number to object.
+			$object['phoneNumbers'][] = array(
+				'type'   => $type,
+				'number' => $phone_number,
 			);
-			
+
 		}
 
-		return $person;
-		
+		return $object;
+
 	}
 
 	/**
-	 * Add website contact data to person.
-	 * 
+	 * Add website contact data to a Capsule CRM object.
+	 *
 	 * @access public
-	 * @param array $person
-	 * @param array $feed
-	 * @param array $entry
-	 * @param array $form
-	 * @param bool $check_for_existing (default: false)
-	 * @return array $person
+	 *
+	 * @param array $object             Capsule CRM object.
+	 * @param array $feed               The feed object.
+	 * @param array $entry              The entry object.
+	 * @param array $form               The form object.
+	 * @param bool  $check_for_existing If existing data should be checked. Defaults to false.
+	 *
+	 * @uses   GFAddOn::get_dynamic_field_map_fields()
+	 * @uses   GFAddOn::get_field_value()
+	 * @uses   GFCapsuleCRM::exists_in_array()
+	 *
+	 * @return array
 	 */
-	public function add_person_website_data( $person, $feed, $entry, $form, $check_for_existing = false ) {
-		
-		$person_custom_fields = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
+	public function add_person_website_data( $object, $feed, $entry, $form, $check_for_existing = false ) {
 
-		/* Add any mapped websites. */
-		foreach ( $person_custom_fields as $field_key => $field ) {
-			
-			/* Get the website address. */
+		// Get custom fields.
+		$custom_fields = $this->get_dynamic_field_map_fields( $feed, 'person_custom_fields' );
+
+		// Loop through custom fields.
+		foreach ( $custom_fields as $field_key => $field ) {
+
+			// If this is not an website address field, skip.
+			if ( strpos( $field_key, 'website_' ) !== 0 ) {
+				continue;
+			}
+
+			// Get the website address.
 			$website_address = $this->get_field_value( $form, $entry, $field );
 
-			/* If this is not an website address field or the website address is blank, move on. */
-			if ( strpos( $field_key, 'website_' ) !== 0 || rgblank( $website_address ) )
+			// If website address is empty, skip.
+			if ( rgblank( $website_address ) ) {
 				continue;
-			
-			/* Check if this website is already in the website data. */
-			if ( $check_for_existing && ! empty( $person['contacts']['website'] ) && $this->exists_in_array( $person['contacts']['website'], 'webAddress', $website_address ) )
-				continue;
+			}
 
-			/* Prepare the service field. */
+			// If website address is already assigned to object, skip.
+			if ( $check_for_existing && rgar( $object, 'websites' ) && $this->exists_in_array( $object['websites'], 'address', $website_address ) ) {
+				continue;
+			}
+
+			// Prepare website type.
 			$service = strtoupper( str_replace( 'website_', '', $field_key ) );
-			
-			/* Add the website to the contact. */
-			$person['contacts']['website'][] = array(
-				'webService' => $service,
-				'webAddress' => $website_address	
+
+			// Add website to object.
+			$object['websites'][] = array(
+				'service' => $service,
+				'address' => $website_address,
 			);
-			
+
 		}
 
-		return $person;
-		
+		return $object;
+
 	}
-	
+
 	/**
 	 * Check if value exists in multidimensional array.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
-	 * @param array $array
-	 * @param string $key
-	 * @param string $value
+	 *
+	 * @param array  $array The array to check.
+	 * @param string $key   The key to check in.
+	 * @param string $value The value to check for.
+	 *
 	 * @return bool
 	 */
 	public function exists_in_array( $array, $key, $value ) {
-		
+
 		foreach ( $array as $item ) {
-			
-			if ( ! isset( $item[$key] ) ) {
+
+			if ( ! isset( $item[ $key ] ) ) {
 				continue;
 			}
-				
-			if ( $item[$key] == $value ) {
+
+			if ( $item[ $key ] == $value ) {
 				return true;
 			}
-			
 		}
-		
+
 		return false;
-		
+
 	}
 
 	/**
 	 * Initialized Capsule CRM API if credentials are valid.
-	 * 
+	 *
+	 * @since  1.0
 	 * @access public
+	 *
+	 * @uses   GFAddOn::get_plugin_settings()
+	 * @uses   GF_CapsuleCRM_API::get_users()
+	 *
 	 * @return bool
 	 */
 	public function initialize_api() {
 
-		if ( ! is_null( $this->api ) )
+		// If API is already initialized, return.
+		if ( ! is_null( $this->api ) ) {
 			return true;
-		
-		/* Load the Capsule CRM API library. */
-		require_once 'includes/class-capsulecrm.php';
+		}
 
-		/* Get the plugin settings */
+		// Load the Capsule CRM API library. */
+		if ( ! class_exists( 'GF_CapsuleCRM_API' ) ) {
+			require_once 'includes/class-gf-capsulecrm-api.php';
+		}
+
+		// Get the plugin settings.
 		$settings = $this->get_plugin_settings();
-		
-		/* If any of the account information fields are empty, return null. */
-		if ( rgblank( $settings['account_url'] ) || rgblank( $settings['api_token'] ) )
+
+		// If authorization token is not provided, return.
+		if ( ! rgar( $settings, 'authToken' ) ) {
 			return null;
-			
-		$this->log_debug( __METHOD__ . "(): Validating API info." );
-		
-		$capsule = new CapsuleCRM( $settings['account_url'], $settings['api_token'] );
-		
+		}
+
+		// Log that we are validating API credentials.
+		$this->log_debug( __METHOD__ . '(): Validating API info.' );
+
 		try {
-			
-			/* Run API test. */
+
+			// Initialize new Capsule CRM API object.
+			$capsule = new GF_CapsuleCRM_API( $settings['authToken'] );
+
+			// Attempt to get account users.
 			$capsule->get_users();
-			
-			/* Log that test passed. */
+
+			// Log that test passed.
 			$this->log_debug( __METHOD__ . '(): API credentials are valid.' );
-			
-			/* Assign Capsule CRM object to the class. */
+
+			// Assign Capsule CRM object to the class.
 			$this->api = $capsule;
-			
+
 			return true;
-			
+
 		} catch ( Exception $e ) {
-			
-			/* Log that test failed. */
-			$this->log_error( __METHOD__ . '(): API credentials are invalid; '. $e->getMessage() );			
+
+			// Log that test failed.
+			$this->log_error( __METHOD__ . '(): API credentials are invalid; ' . $e->getMessage() );
 
 			return false;
-			
+
 		}
-		
+
 	}
 
 }
