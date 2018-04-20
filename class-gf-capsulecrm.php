@@ -1,4 +1,10 @@
 <?php
+
+// don't load directly
+if ( ! defined( 'ABSPATH' ) ) {
+	die();
+}
+
 /**
  * Contains the primary functionality of the Capsule CRM add-on.
  *
