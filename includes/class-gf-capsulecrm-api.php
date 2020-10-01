@@ -1,7 +1,5 @@
 <?php
 
-require_once 'class-gf-capsulecrm-exception.php';
-
 class GF_CapsuleCRM_API {
 
 	/**
@@ -38,8 +36,7 @@ class GF_CapsuleCRM_API {
 	 *
 	 * @uses   GF_CapsuleCRM_API::make_request()
 	 *
-	 * @return array
-	 * @throws GF_CapsuleCRM_Exception
+	 * @return array|WP_Error
 	 */
 	public function create_case( $case ) {
 
@@ -63,8 +60,7 @@ class GF_CapsuleCRM_API {
 	 *
 	 * @uses   GF_CapsuleCRM_API::make_request()
 	 *
-	 * @return array
-	 * @throws GF_CapsuleCRM_Exception
+	 * @return array|WP_Error
 	 */
 	public function create_opportunity( $opportunity ) {
 
@@ -88,8 +84,7 @@ class GF_CapsuleCRM_API {
 	 *
 	 * @uses   GF_CapsuleCRM_API::make_request()
 	 *
-	 * @return array
-	 * @throws GF_CapsuleCRM_Exception
+	 * @return array|WP_Error
 	 */
 	public function create_party( $party ) {
 
@@ -107,8 +102,7 @@ class GF_CapsuleCRM_API {
 	 *
 	 * @uses   GF_CapsuleCRM_API::make_request()
 	 *
-	 * @return array
-	 * @throws GF_CapsuleCRM_Exception
+	 * @return array|WP_Error
 	 */
 	public function get_party( $party_id ) {
 
@@ -127,13 +121,16 @@ class GF_CapsuleCRM_API {
 	 *
 	 * @uses   GF_CapsuleCRM_API::make_request()
 	 *
-	 * @return array
-	 * @throws GF_CapsuleCRM_Exception
+	 * @return array|WP_Error
 	 */
 	public function search_parties( $query, $type = '' ) {
 
 		// Get parties.
 		$parties = $this->make_request( 'parties/search', array( 'q' => $query, 'perPage' => 100 ) );
+
+		if ( is_wp_error( $parties ) ) {
+			return $parties;
+		}
 
 		// If no parties were found, return.
 		if ( ! rgar( $parties, 'parties' ) ) {
@@ -162,8 +159,7 @@ class GF_CapsuleCRM_API {
 	 *
 	 * @uses   GF_CapsuleCRM_API::make_request()
 	 *
-	 * @return array
-	 * @throws GF_CapsuleCRM_Exception
+	 * @return array|WP_Error
 	 */
 	public function update_party( $party_id, $party ) {
 
@@ -187,8 +183,7 @@ class GF_CapsuleCRM_API {
 	 *
 	 * @uses   GF_CapsuleCRM_API::make_request()
 	 *
-	 * @return array
-	 * @throws GF_CapsuleCRM_Exception
+	 * @return array|WP_Error
 	 */
 	public function create_task( $task ) {
 
@@ -210,13 +205,16 @@ class GF_CapsuleCRM_API {
 	 *
 	 * @uses   GF_CapsuleCRM_API::make_request()
 	 *
-	 * @return array
-	 * @throws GF_CapsuleCRM_Exception
+	 * @return array|WP_Error
 	 */
 	public function get_users() {
 
 		// Get users.
 		$users = $this->make_request( 'users' );
+
+		if ( is_wp_error( $users ) ) {
+			return $users;
+		}
 
 		return rgar( $users, 'users' );
 
@@ -236,12 +234,15 @@ class GF_CapsuleCRM_API {
 	 *
 	 * @uses   GF_CapsuleCRM_API::make_request()
 	 *
-	 * @return array
-	 * @throws GF_CapsuleCRM_Exception
+	 * @return array|WP_Error
 	 */
 	public function get_categories() {
 
 		$categories = $this->make_request( 'categories' );
+
+		if ( is_wp_error( $categories ) ) {
+			return $categories;
+		}
 
 		return rgar( $categories, 'categories' );
 
@@ -255,12 +256,15 @@ class GF_CapsuleCRM_API {
 	 *
 	 * @uses   GF_CapsuleCRM_API::make_request()
 	 *
-	 * @return array
-	 * @throws GF_CapsuleCRM_Exception
+	 * @return array|WP_Error
 	 */
 	public function get_milestones() {
 
 		$milestones = $this->make_request( 'milestones' );
+
+		if ( is_wp_error( $milestones ) ) {
+			return $milestones;
+		}
 
 		return rgar( $milestones, 'milestones' );
 
@@ -277,6 +281,7 @@ class GF_CapsuleCRM_API {
 	 * Make API request.
 	 *
 	 * @since  1.0
+	 * @since  1.5 Updated to return WP_Error instead of throwing an exception.
 	 * @access private
 	 *
 	 * @param string $action
@@ -284,8 +289,7 @@ class GF_CapsuleCRM_API {
 	 * @param string $method        (default: 'GET')
 	 * @param int    $expected_code (default: 200)
 	 *
-	 * @return array
-	 * @throws GF_CapsuleCRM_Exception
+	 * @return array|WP_Error
 	 */
 	private function make_request( $action, $options = array(), $method = 'GET', $expected_code = 200 ) {
 
@@ -310,17 +314,17 @@ class GF_CapsuleCRM_API {
 		}
 
 		// Execute request.
-		$result        = wp_remote_request( $request_url, $args );
-		$response_code = wp_remote_retrieve_response_code( $result );
+		$result = wp_remote_request( $request_url, $args );
 
-		// If WP_Error, throw exception.
 		if ( is_wp_error( $result ) ) {
-			throw new GF_CapsuleCRM_Exception( $result->get_error_message(), $result->get_error_code() );
+			return $result;
 		}
+
+		$response_code = wp_remote_retrieve_response_code( $result );
 
 		// If API credentials failed, throw exception.
 		if ( 401 == $response_code ) {
-			throw new GF_CapsuleCRM_Exception( 'API credentials invalid.', 401 );
+			return new WP_Error( 401, 'API credentials invalid.' );
 		}
 
 		// Decode response.
@@ -328,7 +332,7 @@ class GF_CapsuleCRM_API {
 
 		// If returned HTTP code does not match expected code, throw exception.
 		if ( $expected_code !== $response_code ) {
-			throw new GF_CapsuleCRM_Exception( $response['message'], $response_code, null, rgar( $response, 'errors' ) );
+			return new WP_Error( $response_code, $response['message'], rgar( $response, 'errors' ) );
 		}
 
 		return $response;

@@ -1,0 +1,9 @@
+{
+    "name": "wp-premium/gravityformscapsulecrm",
+    "type": "wordpress-plugin",
+    "autoload": {
+        "classmap": [
+            "."
+        ]
+    }
+}
