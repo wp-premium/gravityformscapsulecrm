@@ -196,11 +196,12 @@ class GFCapsuleCRM extends GFFeedAddOn {
 	 * @return array $styles
 	 */
 	public function styles() {
+		$min = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG || isset( $_GET['gform_debug'] ) ? '' : '.min';
 
 		$styles = array(
 			array(
 				'handle'  => 'gform_capsulecrm_form_settings_css',
-				'src'     => $this->get_base_url() . '/css/form_settings.css',
+				'src'     => $this->get_base_url() . "/css/form_settings{$min}.css",
 				'version' => $this->_version,
 				'enqueue' => array(
 					array( 'admin_page' => array( 'form_settings' ) ),
@@ -336,7 +337,7 @@ class GFCapsuleCRM extends GFFeedAddOn {
 						'label'         => esc_html__( 'Feed Name', 'gravityformscapsulecrm' ),
 						'type'          => 'text',
 						'required'      => true,
-						'class'         => 'small',
+						'class'         => 'medium',
 						'default_value' => $this->get_default_feed_name(),
 						'tooltip'       => sprintf(
 							'<h6>%s</h6>%s',
@@ -643,27 +644,24 @@ class GFCapsuleCRM extends GFFeedAddOn {
 			return array();
 		}
 
-		// Initialize choices array.
+		$users = $this->api->get_users();
+
+		if ( is_wp_error( $users ) ) {
+			$this->log_error( __METHOD__ . '(): Unable to retrieve Capsule CRM users; ' . $users->get_error_message() );
+
+			return array();
+		}
+
+		if ( empty( $users ) || ! is_array( $users ) ) {
+			return array();
+		}
+
 		$choices = array(
 			array(
 				'label' => esc_html__( 'Choose a Capsule CRM User', 'gravityformscapsulecrm' ),
 				'value' => '',
 			),
 		);
-
-		try {
-
-			// Get users.
-			$users = $this->api->get_users();
-
-		} catch ( Exception $e ) {
-
-			// Log that we could not get users.
-			$this->log_error( __METHOD__ . '(): Unable to retrieve Capsule CRM users; ' . $e->getMessage() );
-
-			return $choices;
-
-		}
 
 		// Loop through milestones.
 		foreach ( $users as $user ) {
@@ -698,6 +696,18 @@ class GFCapsuleCRM extends GFFeedAddOn {
 			return array();
 		}
 
+		$milestones = $this->api->get_milestones();
+
+		if ( is_wp_error( $milestones ) ) {
+			$this->log_error( __METHOD__ . '(): Unable to retrieve Capsule CRM milestones; ' . $milestones->get_error_message() );
+
+			return array();
+		}
+
+		if ( empty( $milestones ) || ! is_array( $milestones ) ) {
+			return array();
+		}
+
 		// Initialize choices array.
 		$choices = array(
 			array(
@@ -705,20 +715,6 @@ class GFCapsuleCRM extends GFFeedAddOn {
 				'value' => '',
 			),
 		);
-
-		try {
-
-			// Get milestones.
-			$milestones = $this->api->get_milestones();
-
-		} catch ( Exception $e ) {
-
-			// Log that we could not get milestones.
-			$this->log_error( __METHOD__ . '(): Unable to retrieve Capsule CRM milestones; ' . $e->getMessage() );
-
-			return $choices;
-
-		}
 
 		// Loop through milestones.
 		foreach ( $milestones as $milestone ) {
@@ -753,6 +749,18 @@ class GFCapsuleCRM extends GFFeedAddOn {
 			return array();
 		}
 
+		$categories = $this->api->get_categories();
+
+		if ( is_wp_error( $categories ) ) {
+			$this->log_error( __METHOD__ . '(): Unable to retrieve Capsule CRM categories; ' . $categories->get_error_message() );
+
+			return array();
+		}
+
+		if ( empty( $categories ) || ! is_array( $categories ) ) {
+			return array();
+		}
+
 		// Initialize choices array.
 		$choices = array(
 			array(
@@ -760,20 +768,6 @@ class GFCapsuleCRM extends GFFeedAddOn {
 				'value' => '',
 			),
 		);
-
-		try {
-
-			// Get categories.
-			$categories = $this->api->get_categories();
-
-		} catch ( Exception $e ) {
-
-			// Log that we could not get categories.
-			$this->log_error( __METHOD__ . '(): Unable to retrieve Capsule CRM categories; ' . $e->getMessage() );
-
-			return $choices;
-
-		}
 
 		// Loop through categories.
 		foreach ( $categories as $category ) {
@@ -1127,6 +1121,8 @@ class GFCapsuleCRM extends GFFeedAddOn {
 		// Create party.
 		if ( rgars( $feed, 'meta/create_person' ) ) {
 
+			$parties = null;
+
 			// Update existing party.
 			if ( rgars( $feed, 'meta/update_person_enable' ) ) {
 
@@ -1134,36 +1130,21 @@ class GFCapsuleCRM extends GFFeedAddOn {
 				$email_address = rgars( $feed, 'meta/person_standard_fields_email_address' );
 				$email_address = $this->get_field_value( $form, $entry, $email_address );
 
-				try {
+				// Search for existing party.
+				$parties = $this->api->search_parties( urlencode( $email_address ) );
 
-					// Search for existing party.
-					$parties = $this->api->search_parties( urlencode( $email_address ) );
-
-					// Log parties response.
-					$this->log_debug( __METHOD__ . '(): Found parties: ' . print_r( $parties, true ) );
-
-					// If existing party was found, update.
-					if ( $parties ) {
-						$party = $this->update_person( $parties[0], $feed, $entry, $form );
-					} else {
-						$party = $this->create_person( $feed, $entry, $form );
-					}
-
-				} catch ( Exception $e ) {
-
-					// Log that we could not search for existing parties.
-					$this->add_feed_error( 'Unable to search for existing party, creating new party; ' . $e->getMessage(), $feed, $entry, $form );
-
-					// Create party.
-					$party = $this->create_person( $feed, $entry, $form );
-
+				if ( is_wp_error( $parties ) ) {
+					$this->add_feed_error( 'Unable to search for existing party, creating new party; ' . $parties->get_error_message(), $feed, $entry, $form );
+					$parties = null;
 				}
 
+			}
+
+			if ( ! empty( $parties ) ) {
+				$this->log_debug( __METHOD__ . '(): Found parties: ' . print_r( $parties, true ) );
+				$party = $this->update_person( $parties[0], $feed, $entry, $form );
 			} else {
-
-				// Create party.
 				$party = $this->create_person( $feed, $entry, $form );
-
 			}
 
 			// Create case.
@@ -1210,8 +1191,8 @@ class GFCapsuleCRM extends GFFeedAddOn {
 
 		// Initialize case object.
 		$case = array(
-			'name'        => GFCommon::replace_variables( $feed['meta']['case_name'], $form, $entry ),
-			'description' => GFCommon::replace_variables( $feed['meta']['case_description'], $form, $entry ),
+			'name'        => GFCommon::replace_variables( $feed['meta']['case_name'], $form, $entry, false, false, false, 'text' ),
+			'description' => GFCommon::replace_variables( $feed['meta']['case_description'], $form, $entry, false, false, false, 'text' ),
 			'status'      => $feed['meta']['case_status'],
 			'party'       => array( 'id' => $party['id'] ),
 		);
@@ -1243,38 +1224,35 @@ class GFCapsuleCRM extends GFFeedAddOn {
 			return null;
 		}
 
-		try {
+		// Log case being created.
+		$this->log_debug( __METHOD__ . '(): Creating case: ' . print_r( $case, true ) );
 
-			// Log case being created.
-			$this->log_debug( __METHOD__ . '(): Creating case: ' . print_r( $case, true ) );
+		// Create case.
+		$case = $this->api->create_case( $case );
 
-			// Create case.
-			$case = $this->api->create_case( $case );
-			$case = $case['kase'];
-
-			// Log that case was created.
-			$this->log_debug( __METHOD__ . '(): Case #' . $case['id'] . ' created.' );
-
-			// Assign case ID to entry object.
-			gform_update_meta( $entry['id'], 'capsulecrm_case_id', $case['id'] );
-
-			return $case;
-
-		} catch ( GF_CapsuleCRM_Exception $e ) {
-
+		if ( is_wp_error( $case ) ) {
 			$this->add_feed_error( sprintf(
 				esc_html__( 'Case could not be created. %s', 'gravityformscapsulecrm' ),
-				$e->getMessage()
+				$case->get_error_message()
 			), $feed, $entry, $form );
 
 			// Log additional errors.
-			if ( $e->getErrors() ) {
-				$this->log_error( __METHOD__ . '(): Additional error messages: ' . print_r( $e->getErrors() ) );
+			if ( $error_data = $case->get_error_data() ) {
+				$this->log_error( __METHOD__ . '(): Additional error messages: ' . print_r( $error_data, true ) );
 			}
 
+			return null;
 		}
 
-		return null;
+		$case = $case['kase'];
+
+		// Log that case was created.
+		$this->log_debug( __METHOD__ . '(): Case #' . $case['id'] . ' created.' );
+
+		// Assign case ID to entry object.
+		gform_update_meta( $entry['id'], 'capsulecrm_case_id', $case['id'] );
+
+		return $case;
 
 	}
 
@@ -1303,8 +1281,8 @@ class GFCapsuleCRM extends GFFeedAddOn {
 
 		// Initialize opportunity object.
 		$opportunity = array(
-			'name'        => GFCommon::replace_variables( $feed['meta']['opportunity_name'], $form, $entry ),
-			'description' => GFCommon::replace_variables( $feed['meta']['opportunity_description'], $form, $entry ),
+			'name'        => GFCommon::replace_variables( $feed['meta']['opportunity_name'], $form, $entry, false, false, false, 'text' ),
+			'description' => GFCommon::replace_variables( $feed['meta']['opportunity_description'], $form, $entry, false, false, false, 'text' ),
 			'party'       => array( 'id' => $party['id'] ),
 		);
 
@@ -1336,33 +1314,30 @@ class GFCapsuleCRM extends GFFeedAddOn {
 			return null;
 		}
 
-		try {
+		// Log opportunity being created.
+		$this->log_debug( __METHOD__ . '(): Creating opportunity: ' . print_r( $opportunity, true ) );
 
-			// Log opportunity being created.
-			$this->log_debug( __METHOD__ . '(): Creating opportunity: ' . print_r( $opportunity, true ) );
+		// Create opportunity.
+		$opportunity = $this->api->create_opportunity( $opportunity );
 
-			// Create opportunity.
-			$opportunity = $this->api->create_opportunity( $opportunity );
-			$opportunity = $opportunity['opportunity'];
-
-			// Log that opportunity was created.
-			$this->log_debug( __METHOD__ . '(): Opportunity #' . $opportunity['id'] . ' created.' );
-
-			// Assign opportunity ID to entry object.
-			gform_update_meta( $entry['id'], 'capsulecrm_opportunity_id', $opportunity['id'] );
-
-			return $opportunity;
-
-		} catch ( Exception $e ) {
-
+		if ( is_wp_error( $opportunity ) ) {
 			$this->add_feed_error( sprintf(
 				esc_html__( 'Opportunity could not be created. %s', 'gravityformscapsulecrm' ),
-				$e->getMessage()
+				$opportunity->get_error_message()
 			), $feed, $entry, $form );
 
+			return null;
 		}
 
-		return null;
+		$opportunity = $opportunity['opportunity'];
+
+		// Log that opportunity was created.
+		$this->log_debug( __METHOD__ . '(): Opportunity #' . $opportunity['id'] . ' created.' );
+
+		// Assign opportunity ID to entry object.
+		gform_update_meta( $entry['id'], 'capsulecrm_opportunity_id', $opportunity['id'] );
+
+		return $opportunity;
 
 	}
 
@@ -1447,38 +1422,35 @@ class GFCapsuleCRM extends GFFeedAddOn {
 			return null;
 		}
 
-		try {
+		// Log person object being created.
+		$this->log_debug( __METHOD__ . '(): Creating person: ' . print_r( $person, true ) );
 
-			// Log person object being created.
-			$this->log_debug( __METHOD__ . '(): Creating person: ' . print_r( $person, true ) );
+		// Create party.
+		$person = $this->api->create_party( $person );
 
-			// Create party.
-			$person = $this->api->create_party( $person );
-			$person = $person['party'];
-
-			// Log that person was created.
-			$this->log_debug( __METHOD__ . '(): Person #' . $person['id'] . ' created.' );
-
-			// Assign person ID to entry object.
-			gform_update_meta( $entry['id'], 'capsulecrm_person_id', $person['id'] );
-
-			return $person;
-
-		} catch ( GF_CapsuleCRM_Exception $e ) {
-
+		if ( is_wp_error( $person ) ) {
 			$this->add_feed_error( sprintf(
 				esc_html__( 'Person could not be created. %s', 'gravityformscapsulecrm' ),
-				$e->getMessage()
+				$person->get_error_message()
 			), $feed, $entry, $form );
 
 			// Log additional errors.
-			if ( $e->getErrors() ) {
-				$this->log_error( __METHOD__ . '(): Additional error messages: ' . print_r( $e->getErrors() ) );
+			if ( $error_data = $person->get_error_data() ) {
+				$this->log_error( __METHOD__ . '(): Additional error messages: ' . print_r( $error_data, true ) );
 			}
 
+			return null;
 		}
 
-		return null;
+		$person = $person['party'];
+
+		// Log that person was created.
+		$this->log_debug( __METHOD__ . '(): Person #' . $person['id'] . ' created.' );
+
+		// Assign person ID to entry object.
+		gform_update_meta( $entry['id'], 'capsulecrm_person_id', $person['id'] );
+
+		return $person;
 
 	}
 
@@ -1506,8 +1478,8 @@ class GFCapsuleCRM extends GFFeedAddOn {
 
 		// Initialize task object.
 		$task = array(
-			'description' => GFCommon::replace_variables( $feed['meta']['task_description'], $form, $entry ),
-			'detail'      => GFCommon::replace_variables( $feed['meta']['task_detail'], $form, $entry ),
+			'description' => GFCommon::replace_variables( $feed['meta']['task_description'], $form, $entry, false, false, false, 'text' ),
+			'detail'      => GFCommon::replace_variables( $feed['meta']['task_detail'], $form, $entry, false, false, false, 'text' ),
 			'dueOn'       => date( 'Y-m-d', strtotime( '+' . $feed['meta']['task_days_until_due'] . ' days' ) ),
 			'dueTime'     => date( 'H:i:s', strtotime( '+' . $feed['meta']['task_days_until_due'] . ' days' ) ),
 			'status'      => $feed['meta']['task_status'],
@@ -1560,33 +1532,30 @@ class GFCapsuleCRM extends GFFeedAddOn {
 			return null;
 		}
 
-		try {
+		// Log task being created.
+		$this->log_debug( __METHOD__ . '(): Creating task: ' . print_r( $task, true ) );
 
-			// Log task being created.
-			$this->log_debug( __METHOD__ . '(): Creating task: ' . print_r( $task, true ) );
+		// Create task.
+		$task = $this->api->create_task( $task );
 
-			// Create task.
-			$task = $this->api->create_task( $task );
-			$task = $task['task'];
-
-			// Log that task was created.
-			$this->log_debug( __METHOD__ . '(): Task #' . $task['id'] . ' created.' );
-
-			// Assign task ID to entry object.
-			gform_update_meta( $entry['id'], 'capsulecrm_task_id', $task['id'] );
-
-			return $task;
-
-		} catch ( Exception $e ) {
-
+		if ( is_wp_error( $task ) ) {
 			$this->add_feed_error( sprintf(
 				esc_html__( 'Task could not be created. %s', 'gravityformscapsulecrm' ),
-				$e->getMessage()
+				$task->get_error_message()
 			), $feed, $entry, $form );
 
+			return null;
 		}
 
-		return null;
+		$task = $task['task'];
+
+		// Log that task was created.
+		$this->log_debug( __METHOD__ . '(): Task #' . $task['id'] . ' created.' );
+
+		// Assign task ID to entry object.
+		gform_update_meta( $entry['id'], 'capsulecrm_task_id', $task['id'] );
+
+		return $task;
 
 	}
 
@@ -1699,38 +1668,35 @@ class GFCapsuleCRM extends GFFeedAddOn {
 			return null;
 		}
 
-		try {
+		// Log person object being updated.
+		$this->log_debug( __METHOD__ . '(): Updating person: ' . print_r( $person, true ) );
 
-			// Log person object being updated.
-			$this->log_debug( __METHOD__ . '(): Updating person: ' . print_r( $person, true ) );
+		// Update party.
+		$person = $this->api->update_party( $person['id'], $person );
 
-			// Update party.
-			$person = $this->api->update_party( $person['id'], $person );
-			$person = $person['party'];
-
-			// Log that person was updated.
-			$this->log_debug( __METHOD__ . '(): Person #' . $person['id'] . ' updated.' );
-
-			// Assign person ID to entry object.
-			gform_update_meta( $entry['id'], 'capsulecrm_person_id', $person['id'] );
-
-			return $person;
-
-		} catch ( GF_CapsuleCRM_Exception $e ) {
-
+		if ( is_wp_error( $person ) ) {
 			$this->add_feed_error( sprintf(
 				esc_html__( 'Person #%1$s could not be updated. %2$s', 'gravityformscapsulecrm' ),
-				$person['id'], $e->getMessage()
+				$person['id'], $person->get_error_message()
 			), $feed, $entry, $form );
 
 			// Log additional errors.
-			if ( $e->getErrors() ) {
-				$this->log_error( __METHOD__ . '(): Additional error messages: ' . print_r( $e->getErrors() ) );
+			if ( $error_data = $person->get_error_data() ) {
+				$this->log_error( __METHOD__ . '(): Additional error messages: ' . print_r( $error_data, true ) );
 			}
 
 			return $original_person;
-
 		}
+
+		$person = $person['party'];
+
+		// Log that person was updated.
+		$this->log_debug( __METHOD__ . '(): Person #' . $person['id'] . ' updated.' );
+
+		// Assign person ID to entry object.
+		gform_update_meta( $entry['id'], 'capsulecrm_person_id', $person['id'] );
+
+		return $person;
 
 	}
 
@@ -1779,18 +1745,14 @@ class GFCapsuleCRM extends GFFeedAddOn {
 			return;
 		}
 
-		try {
+		// Get milestones.
+		$milestones = $this->api->get_milestones();
 
-			// Get milestones.
-			$milestones = $this->api->get_milestones();
-
-		} catch ( GF_CapsuleCRM_Exception $e ) {
-
+		if ( is_wp_error( $milestones ) ) {
 			// Log that we could not retrieve milestones.
-			$this->log_error( __METHOD__ . '(): Unable to retrieve milestones; ' . $e->getMessage() );
+			$this->log_error( __METHOD__ . '(): Unable to retrieve milestones; ' . $milestones->get_error_message() );
 
 			return;
-
 		}
 
 		// Get feeds.
@@ -1887,6 +1849,7 @@ class GFCapsuleCRM extends GFFeedAddOn {
 
 			// If any of the required inputs are empty, skip.
 			if ( ! rgar( $entry, $field_id . '.1' ) || ! rgar( $entry, $field_id . '.3' ) || ! rgar( $entry, $field_id . '.4' ) || ! rgar( $entry, $field_id . '.5' ) ) {
+				$this->log_error( __METHOD__ . '(): Not adding address to person because an address input was left empty.' );
 				continue;
 			}
 
@@ -2154,30 +2117,25 @@ class GFCapsuleCRM extends GFFeedAddOn {
 		// Log that we are validating API credentials.
 		$this->log_debug( __METHOD__ . '(): Validating API info.' );
 
-		try {
+		// Initialize new Capsule CRM API object.
+		$capsule = new GF_CapsuleCRM_API( $settings['authToken'] );
 
-			// Initialize new Capsule CRM API object.
-			$capsule = new GF_CapsuleCRM_API( $settings['authToken'] );
+		// Attempt to get account users.
+		$users = $capsule->get_users();
 
-			// Attempt to get account users.
-			$capsule->get_users();
-
-			// Log that test passed.
-			$this->log_debug( __METHOD__ . '(): API credentials are valid.' );
-
-			// Assign Capsule CRM object to the class.
-			$this->api = $capsule;
-
-			return true;
-
-		} catch ( Exception $e ) {
-
-			// Log that test failed.
-			$this->log_error( __METHOD__ . '(): API credentials are invalid; ' . $e->getMessage() );
+		if ( is_wp_error( $users ) ) {
+			$this->log_error( __METHOD__ . '(): API credentials are invalid; ' . $users->get_error_message() );
 
 			return false;
-
 		}
+
+		// Log that test passed.
+		$this->log_debug( __METHOD__ . '(): API credentials are valid.' );
+
+		// Assign Capsule CRM object to the class.
+		$this->api = $capsule;
+
+		return true;
 
 	}
 

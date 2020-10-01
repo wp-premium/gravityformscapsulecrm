@@ -1,444 +1,421 @@
-# Copyright 2009-2018 Rocketgenius, Inc.
+# Copyright (C) 2020 Gravity Forms
+# This file is distributed under the GPL-2.0+.
 msgid ""
 msgstr ""
-"Project-Id-Version: Gravity Forms Capsule CRM Add-On 1.3\n"
-"Report-Msgid-Bugs-To: http://www.gravtiyhelp.com\n"
-"POT-Creation-Date: 2018-04-10 18:19:56+00:00\n"
+"Project-Id-Version: Gravity Forms Capsule CRM Add-On 1.5\n"
+"Report-Msgid-Bugs-To: https://gravityforms.com/support\n"
+"Last-Translator: Gravity Forms <support@gravityforms.com>\n"
+"Language-Team: Gravity Forms <support@gravityforms.com>\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=utf-8\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2018-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Rocketgenius <customerservice@rocketgenius.com>\n"
-"Language-Team: Rocketgenius <customerservice@rocketgenius.com>\n"
-"X-Generator: Gravity Forms Build Server\n"
-"X-Poedit-KeywordsList: "
-"__;_e;_x:1,2c;_ex:1,2c;_n:1,2;_nx:1,2,4c;_n_noop:1,2;_nx_noop:1,2,3c;esc_"
-"attr__;esc_html__;esc_attr_e;esc_html_e;esc_attr_x:1,2c;esc_html_x:1,2c;\n"
-"Project-Id-Version: gravityformscapsulecrm\n"
-"Language: en_US\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Poedit-Basepath: ../\n"
-"X-Poedit-Bookmarks: \n"
-"X-Poedit-Country: United States\n"
-"X-Poedit-SearchPath-0: .\n"
-"X-Poedit-SourceCharset: utf-8\n"
-"X-Textdomain-Support: yes\n"
+"POT-Creation-Date: 2020-09-16T17:47:14+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.4.0\n"
+"X-Domain: gravityformscapsulecrm\n"
+
+#. Plugin Name of the plugin
+msgid "Gravity Forms Capsule CRM Add-On"
+msgstr ""
+
+#. Plugin URI of the plugin
+#. Author URI of the plugin
+msgid "https://gravityforms.com"
+msgstr ""
+
+#. Description of the plugin
+msgid "Integrates Gravity Forms with Capsule CRM, allowing form submissions to be automatically sent to your Capsule CRM account."
+msgstr ""
+
+#. Author of the plugin
+msgid "Gravity Forms"
+msgstr ""
 
 #: class-gf-capsulecrm.php:169
-msgid ""
-"Recent upgrades to Capsule CRM's API require re-authenticating your "
-"account. %sClick here to update your authentication settings.%s %sNo "
-"Capsule CRM feeds will be processed until reauthenticated.%s"
+msgid "Recent upgrades to Capsule CRM's API require re-authenticating your account. %sClick here to update your authentication settings.%s %sNo Capsule CRM feeds will be processed until reauthenticated.%s"
 msgstr ""
 
 #: class-gf-capsulecrm.php:182
 msgid "Create Capsule CRM object only when payment is received."
 msgstr ""
 
-#: class-gf-capsulecrm.php:237
-msgid ""
-"Capsule CRM is a contact management tool that makes it easy to track cases, "
-"opportunities, people and tasks. Use Gravity Forms to collect customer "
-"information and automatically add it to your Capsule CRM account. If you "
-"don't have a Capsule CRM account, you can %1$s sign up for one here.%2$s"
+#: class-gf-capsulecrm.php:238
+msgid "Capsule CRM is a contact management tool that makes it easy to track cases, opportunities, people and tasks. Use Gravity Forms to collect customer information and automatically add it to your Capsule CRM account. If you don't have a Capsule CRM account, you can %1$s sign up for one here.%2$s"
 msgstr ""
 
-#: class-gf-capsulecrm.php:248
-msgid ""
-"Gravity Forms Capsule CRM Add-On requires personal access token, which can "
-"be found on the API Authentication Token page in the My Preferences page."
+#: class-gf-capsulecrm.php:249
+msgid "Gravity Forms Capsule CRM Add-On requires personal access token, which can be found on the API Authentication Token page in the My Preferences page."
 msgstr ""
 
-#: class-gf-capsulecrm.php:261
+#: class-gf-capsulecrm.php:262
 msgid "Personal Access Token"
 msgstr ""
 
-#: class-gf-capsulecrm.php:269
+#: class-gf-capsulecrm.php:270
 msgid "Capsule CRM settings have been updated."
 msgstr ""
 
-#: class-gf-capsulecrm.php:336
+#: class-gf-capsulecrm.php:337
 msgid "Feed Name"
 msgstr ""
 
-#: class-gf-capsulecrm.php:343 class-gf-capsulecrm.php:448
-#: class-gf-capsulecrm.php:488 class-gf-capsulecrm.php:1021
+#: class-gf-capsulecrm.php:344
+#: class-gf-capsulecrm.php:449
+#: class-gf-capsulecrm.php:489
+#: class-gf-capsulecrm.php:1015
 msgid "Name"
 msgstr ""
 
-#: class-gf-capsulecrm.php:344
+#: class-gf-capsulecrm.php:345
 msgid "Enter a feed name to uniquely identify this setup."
 msgstr ""
 
-#: class-gf-capsulecrm.php:349 class-gf-capsulecrm.php:1022
+#: class-gf-capsulecrm.php:350
+#: class-gf-capsulecrm.php:1016
 msgid "Action"
 msgstr ""
 
-#: class-gf-capsulecrm.php:356
+#: class-gf-capsulecrm.php:357
 msgid "Create New Person"
 msgstr ""
 
-#: class-gf-capsulecrm.php:360
+#: class-gf-capsulecrm.php:361
 msgid "Create New Task"
 msgstr ""
 
-#: class-gf-capsulecrm.php:367
+#: class-gf-capsulecrm.php:368
 msgid "Person Details"
 msgstr ""
 
-#: class-gf-capsulecrm.php:372 class-gf-capsulecrm.php:377
+#: class-gf-capsulecrm.php:373
+#: class-gf-capsulecrm.php:378
 msgid "Map Fields"
 msgstr ""
 
-#: class-gf-capsulecrm.php:378
-msgid ""
-"Select which Gravity Form fields pair with their respective Capsule CRM "
-"fields."
+#: class-gf-capsulecrm.php:379
+msgid "Select which Gravity Form fields pair with their respective Capsule CRM fields."
 msgstr ""
 
-#: class-gf-capsulecrm.php:390
+#: class-gf-capsulecrm.php:391
 msgid "About"
 msgstr ""
 
-#: class-gf-capsulecrm.php:396 class-gf-capsulecrm.php:400
+#: class-gf-capsulecrm.php:397
+#: class-gf-capsulecrm.php:401
 msgid "Update Person"
 msgstr ""
 
-#: class-gf-capsulecrm.php:401
-msgid ""
-"If enabled and an existing person is found, their contact details will "
-"either be replaced or appended. Job title and organization will be replaced "
-"whether replace or append is chosen."
+#: class-gf-capsulecrm.php:402
+msgid "If enabled and an existing person is found, their contact details will either be replaced or appended. Job title and organization will be replaced whether replace or append is chosen."
 msgstr ""
 
-#: class-gf-capsulecrm.php:405
+#: class-gf-capsulecrm.php:406
 msgid "Update Person if already exists"
 msgstr ""
 
-#: class-gf-capsulecrm.php:411
+#: class-gf-capsulecrm.php:412
 msgid "and replace existing data"
 msgstr ""
 
-#: class-gf-capsulecrm.php:415
+#: class-gf-capsulecrm.php:416
 msgid "and append new data"
 msgstr ""
 
-#: class-gf-capsulecrm.php:423
+#: class-gf-capsulecrm.php:424
 msgid "Assign To"
 msgstr ""
 
-#: class-gf-capsulecrm.php:429
+#: class-gf-capsulecrm.php:430
 msgid "Assign Person to a New Case"
 msgstr ""
 
-#: class-gf-capsulecrm.php:433
+#: class-gf-capsulecrm.php:434
 msgid "Assign Person to a New Opportunity"
 msgstr ""
 
-#: class-gf-capsulecrm.php:440
+#: class-gf-capsulecrm.php:441
 msgid "Case Details"
 msgstr ""
 
-#: class-gf-capsulecrm.php:454 class-gf-capsulecrm.php:494
-#: class-gf-capsulecrm.php:520
+#: class-gf-capsulecrm.php:455
+#: class-gf-capsulecrm.php:495
+#: class-gf-capsulecrm.php:521
 msgid "Description"
 msgstr ""
 
-#: class-gf-capsulecrm.php:459 class-gf-capsulecrm.php:539
+#: class-gf-capsulecrm.php:460
+#: class-gf-capsulecrm.php:540
 msgid "Status"
 msgstr ""
 
-#: class-gf-capsulecrm.php:462 class-gf-capsulecrm.php:542
+#: class-gf-capsulecrm.php:463
+#: class-gf-capsulecrm.php:543
 msgid "Open"
 msgstr ""
 
-#: class-gf-capsulecrm.php:466
+#: class-gf-capsulecrm.php:467
 msgid "Closed"
 msgstr ""
 
-#: class-gf-capsulecrm.php:474 class-gf-capsulecrm.php:506
-#: class-gf-capsulecrm.php:560
+#: class-gf-capsulecrm.php:475
+#: class-gf-capsulecrm.php:507
+#: class-gf-capsulecrm.php:561
 msgid "Owner"
 msgstr ""
 
-#: class-gf-capsulecrm.php:480
+#: class-gf-capsulecrm.php:481
 msgid "Opportunity Details"
 msgstr ""
 
-#: class-gf-capsulecrm.php:500
+#: class-gf-capsulecrm.php:501
 msgid "Milestone"
 msgstr ""
 
-#: class-gf-capsulecrm.php:512
+#: class-gf-capsulecrm.php:513
 msgid "Task Details"
 msgstr ""
 
-#: class-gf-capsulecrm.php:526
+#: class-gf-capsulecrm.php:527
 msgid "Detail"
 msgstr ""
 
-#: class-gf-capsulecrm.php:533
+#: class-gf-capsulecrm.php:534
 msgid "Days Until Due"
 msgstr ""
 
-#: class-gf-capsulecrm.php:546
+#: class-gf-capsulecrm.php:547
 msgid "Completed"
 msgstr ""
 
-#: class-gf-capsulecrm.php:554
+#: class-gf-capsulecrm.php:555
 msgid "Category"
 msgstr ""
 
-#: class-gf-capsulecrm.php:565
+#: class-gf-capsulecrm.php:566
 msgid "Assign Task"
 msgstr ""
 
-#: class-gf-capsulecrm.php:572
+#: class-gf-capsulecrm.php:573
 msgid "Feed Conditional Logic"
 msgstr ""
 
-#: class-gf-capsulecrm.php:578 class-gf-capsulecrm.php:583
+#: class-gf-capsulecrm.php:579
+#: class-gf-capsulecrm.php:584
 msgid "Conditional Logic"
 msgstr ""
 
-#: class-gf-capsulecrm.php:579
+#: class-gf-capsulecrm.php:580
 msgid "Enable"
 msgstr ""
 
-#: class-gf-capsulecrm.php:580
+#: class-gf-capsulecrm.php:581
 msgid "Export to Capsule CRM if"
 msgstr ""
 
-#: class-gf-capsulecrm.php:584
-msgid ""
-"When conditional logic is enabled, form submissions will only be exported "
-"to Capsule CRM when the condition is met. When disabled, all form "
-"submissions will be posted."
+#: class-gf-capsulecrm.php:585
+msgid "When conditional logic is enabled, form submissions will only be exported to Capsule CRM when the condition is met. When disabled, all form submissions will be posted."
 msgstr ""
 
-#: class-gf-capsulecrm.php:623
-msgid "This field must be numeric."
-msgstr ""
-
-#: class-gf-capsulecrm.php:649
+#: class-gf-capsulecrm.php:661
 msgid "Choose a Capsule CRM User"
 msgstr ""
 
-#: class-gf-capsulecrm.php:704
+#: class-gf-capsulecrm.php:714
 msgid "Choose a Milestone"
 msgstr ""
 
-#: class-gf-capsulecrm.php:759
+#: class-gf-capsulecrm.php:767
 msgid "Choose a Category"
 msgstr ""
 
-#: class-gf-capsulecrm.php:809
+#: class-gf-capsulecrm.php:803
 msgid "Do Not Assign Task"
 msgstr ""
 
-#: class-gf-capsulecrm.php:817
+#: class-gf-capsulecrm.php:811
 msgid "Assign Task to Created Case"
 msgstr ""
 
-#: class-gf-capsulecrm.php:825
+#: class-gf-capsulecrm.php:819
 msgid "Assign Task to Created Person"
 msgstr ""
 
-#: class-gf-capsulecrm.php:833
+#: class-gf-capsulecrm.php:827
 msgid "Assign Task to Created Opportunity"
 msgstr ""
 
-#: class-gf-capsulecrm.php:854
+#: class-gf-capsulecrm.php:848
 msgid "First Name"
 msgstr ""
 
-#: class-gf-capsulecrm.php:860
+#: class-gf-capsulecrm.php:854
 msgid "Last Name"
 msgstr ""
 
-#: class-gf-capsulecrm.php:866 class-gf-capsulecrm.php:897
+#: class-gf-capsulecrm.php:860
+#: class-gf-capsulecrm.php:891
 msgid "Email Address"
 msgstr ""
 
-#: class-gf-capsulecrm.php:886
+#: class-gf-capsulecrm.php:880
 msgid "Choose a Field"
 msgstr ""
 
-#: class-gf-capsulecrm.php:890
+#: class-gf-capsulecrm.php:884
 msgid "Job Title"
 msgstr ""
 
-#: class-gf-capsulecrm.php:894
+#: class-gf-capsulecrm.php:888
 msgid "Organization"
 msgstr ""
 
-#: class-gf-capsulecrm.php:900 class-gf-capsulecrm.php:913
+#: class-gf-capsulecrm.php:894
+#: class-gf-capsulecrm.php:907
 msgid "Work"
 msgstr ""
 
-#: class-gf-capsulecrm.php:904 class-gf-capsulecrm.php:925
-#: class-gf-capsulecrm.php:942
+#: class-gf-capsulecrm.php:898
+#: class-gf-capsulecrm.php:919
+#: class-gf-capsulecrm.php:936
 msgid "Home"
 msgstr ""
 
-#: class-gf-capsulecrm.php:910
+#: class-gf-capsulecrm.php:904
 msgid "Phone Number"
 msgstr ""
 
-#: class-gf-capsulecrm.php:917
+#: class-gf-capsulecrm.php:911
 msgid "Mobile"
 msgstr ""
 
-#: class-gf-capsulecrm.php:921
+#: class-gf-capsulecrm.php:915
 msgid "Fax"
 msgstr ""
 
-#: class-gf-capsulecrm.php:929
+#: class-gf-capsulecrm.php:923
 msgid "Direct"
 msgstr ""
 
-#: class-gf-capsulecrm.php:935
+#: class-gf-capsulecrm.php:929
 msgid "Address"
 msgstr ""
 
-#: class-gf-capsulecrm.php:938
+#: class-gf-capsulecrm.php:932
 msgid "Office"
 msgstr ""
 
-#: class-gf-capsulecrm.php:946
+#: class-gf-capsulecrm.php:940
 msgid "Postal"
 msgstr ""
 
-#: class-gf-capsulecrm.php:952
+#: class-gf-capsulecrm.php:946
 msgid "Website"
 msgstr ""
 
-#: class-gf-capsulecrm.php:955
+#: class-gf-capsulecrm.php:949
 msgid "URL"
 msgstr ""
 
-#: class-gf-capsulecrm.php:959
+#: class-gf-capsulecrm.php:953
 msgid "Skype"
 msgstr ""
 
-#: class-gf-capsulecrm.php:963
+#: class-gf-capsulecrm.php:957
 msgid "Twitter"
 msgstr ""
 
-#: class-gf-capsulecrm.php:967
+#: class-gf-capsulecrm.php:961
 msgid "Facebook"
 msgstr ""
 
-#: class-gf-capsulecrm.php:971
+#: class-gf-capsulecrm.php:965
 msgid "LinkedIn"
 msgstr ""
 
-#: class-gf-capsulecrm.php:975
+#: class-gf-capsulecrm.php:969
 msgid "Xing"
 msgstr ""
 
-#: class-gf-capsulecrm.php:979
+#: class-gf-capsulecrm.php:973
 msgid "Feed"
 msgstr ""
 
-#: class-gf-capsulecrm.php:983
+#: class-gf-capsulecrm.php:977
 msgid "Google Plus"
 msgstr ""
 
-#: class-gf-capsulecrm.php:987
+#: class-gf-capsulecrm.php:981
 msgid "Flickr"
 msgstr ""
 
-#: class-gf-capsulecrm.php:991
+#: class-gf-capsulecrm.php:985
 msgid "GitHub"
 msgstr ""
 
-#: class-gf-capsulecrm.php:995
+#: class-gf-capsulecrm.php:989
 msgid "YouTube"
 msgstr ""
 
-#: class-gf-capsulecrm.php:1044
+#: class-gf-capsulecrm.php:1038
 msgid "Create Person & Task"
 msgstr ""
 
-#: class-gf-capsulecrm.php:1048
+#: class-gf-capsulecrm.php:1042
 msgid "Create Person"
 msgstr ""
 
-#: class-gf-capsulecrm.php:1052
+#: class-gf-capsulecrm.php:1046
 msgid "Create Task"
 msgstr ""
 
-#: class-gf-capsulecrm.php:1056
+#: class-gf-capsulecrm.php:1050
 msgid "No Action"
 msgstr ""
 
-#: class-gf-capsulecrm.php:1122
+#: class-gf-capsulecrm.php:1116
 msgid "Feed was not processed because API was not initialized."
 msgstr ""
 
-#: class-gf-capsulecrm.php:1242
+#: class-gf-capsulecrm.php:1223
 msgid "Case could not be created because case name was not provided."
 msgstr ""
 
-#: class-gf-capsulecrm.php:1266
+#: class-gf-capsulecrm.php:1235
 msgid "Case could not be created. %s"
 msgstr ""
 
-#: class-gf-capsulecrm.php:1335
+#: class-gf-capsulecrm.php:1313
 msgid "Opportunity could not be created because opportunity name was not provided."
 msgstr ""
 
-#: class-gf-capsulecrm.php:1359
+#: class-gf-capsulecrm.php:1325
 msgid "Opportunity could not be created. %s"
 msgstr ""
 
-#: class-gf-capsulecrm.php:1440
+#: class-gf-capsulecrm.php:1415
 msgid "Person could not be created as first and/or last name were not provided."
 msgstr ""
 
-#: class-gf-capsulecrm.php:1446
+#: class-gf-capsulecrm.php:1421
 msgid "Person could not be created as email address was not provided."
 msgstr ""
 
-#: class-gf-capsulecrm.php:1470
+#: class-gf-capsulecrm.php:1433
 msgid "Person could not be created. %s"
 msgstr ""
 
-#: class-gf-capsulecrm.php:1559
+#: class-gf-capsulecrm.php:1531
 msgid "Task could not be created as the task description was not provided."
 msgstr ""
 
-#: class-gf-capsulecrm.php:1583
+#: class-gf-capsulecrm.php:1543
 msgid "Task could not be created. %s"
 msgstr ""
 
-#: class-gf-capsulecrm.php:1698
+#: class-gf-capsulecrm.php:1667
 msgid "Person could not be updated as first and/or last name were not provided."
 msgstr ""
 
-#: class-gf-capsulecrm.php:1722
+#: class-gf-capsulecrm.php:1679
 msgid "Person #%1$s could not be updated. %2$s"
-msgstr ""
-
-#. Plugin Name of the plugin/theme
-msgid "Gravity Forms Capsule CRM Add-On"
-msgstr ""
-
-#. Plugin URI of the plugin/theme
-msgid "https://www.gravityforms.com"
-msgstr ""
-
-#. Description of the plugin/theme
-msgid ""
-"Integrates Gravity Forms with Capsule CRM, allowing form submissions to be "
-"automatically sent to your Capsule CRM account."
-msgstr ""
-
-#. Author of the plugin/theme
-msgid "rocketgenius"
-msgstr ""
-
-#. Author URI of the plugin/theme
-msgid "https://www.rocketgenius.com"
 msgstr ""

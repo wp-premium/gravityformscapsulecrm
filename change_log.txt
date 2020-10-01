@@ -1,30 +1,41 @@
-# 1.3 | 2018-04-09
-   - Added security enhancements.
-   - Added GPL to plugin header.
-   - Updated Plugin URI and Author URI to use https.
-   - Updated header to be consistent with other add-ons.
+### 1.5 | 2020-09-16
+- Fixed a PHP fatal error which can occur if a request to the Capsule CRM API fails.
+- Fixed an issue where escaped HTML could be included in the name, description, and detail properties of cases, opportunities, persons, and tasks.
+- Fixed an issue where some error logging statements were echoing to the screen instead of writing to the add-on log.
 
 
-# 1.2 | 2018-01-30
-   - Updated API library to work with version 2.0 of Capsule CRM API.
-
-   - Added "gform_capsulecrm_case" filter to modify the case object before it is created.
-   - Added "gform_capsulecrm_opportunity" filter to modify the opportunity object before it is created.
-   - Added "gform_capsulecrm_person" filter to modify the person object before it is created/updated.
-   - Added "gform_capsulecrm_task" filter to modify the tasks object before it is created.
-   - Fixed a fatal PHP error which would occur if a WP_Error is returned when making a request to the Capsule CRM API.
-   - Fixed PHP notice.
-   - Fixed strings for translations
+### 1.4 | 2020-03-31
+- Added translations for Hebrew, Hindi, Japanese, and Turkish.
+- Updated stylesheets to use minified versions.
+- Updated feed processing to log error explaining why address is not added to object.
 
 
-# 1.1 | 2016-07-29
-   - Added feed duplication support.
-   - Added support for delaying feed processing until payment by PayPal Standard is successfully completed.
-   - Updated Capsule CRM API library to use WordPress API functions.
-   - Updated feed processing to abort person creation if email is empty or invalid.
-   - Updated available field types for mapping to the person first name, last name, and email.
-   - Fixed php warnings related to Milestone setting if only one milestone exists.
+### 1.3 | 2018-04-09
+- Added security enhancements.
+- Added GPL to plugin header.
+- Updated Plugin URI and Author URI to use https.
+- Updated header to be consistent with other add-ons.
 
 
-# 1.0 | 2015-07-28
-   - It's all new!
+### 1.2 | 2018-01-30
+- Updated API library to work with version 2.0 of Capsule CRM API.
+- Added *gform_capsulecrm_case* filter to modify the case object before it is created.
+- Added *gform_capsulecrm_opportunity* filter to modify the opportunity object before it is created.
+- Added *gform_capsulecrm_person* filter to modify the person object before it is created/updated.
+- Added *gform_capsulecrm_task* filter to modify the tasks object before it is created.
+- Fixed a fatal PHP error which would occur if a WP_Error is returned when making a request to the Capsule CRM API.
+- Fixed PHP notice.
+- Fixed strings for translations.
+
+
+### 1.1 | 2016-07-29
+- Added feed duplication support.
+- Added support for delaying feed processing until payment by PayPal Standard is successfully completed.
+- Updated Capsule CRM API library to use WordPress API functions.
+- Updated feed processing to abort person creation if email is empty or invalid.
+- Updated available field types for mapping to the person first name, last name, and email.
+- Fixed php warnings related to Milestone setting if only one milestone exists.
+
+
+### 1.0 | 2015-07-28
+- It's all new!
